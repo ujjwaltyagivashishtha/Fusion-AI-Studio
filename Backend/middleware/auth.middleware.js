@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import redisClient from "../services/redis.service.js";
 
 export const authUser = async (req, res, next) => {
   try {
@@ -11,7 +12,18 @@ export const authUser = async (req, res, next) => {
       })
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET); // it return payload
+    const blackListed = await redisClient.get(token);
+
+    if(blackListed){
+      res.cookie("token", " ");
+      
+      return res.status(401).json({
+        error: "Unauthorized user",
+        message: "Token has been blacklisted"
+      })
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET); 
 
     req.user = decoded;
 
