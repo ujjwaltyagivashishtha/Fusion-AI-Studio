@@ -69,7 +69,7 @@ export const loginUserController = async (req, res) => {
       })
     } 
 
-    const token = user.generateToken();
+    const token = await user.generateToken();
     console.log(token);
 
     res.status(200).json({
@@ -100,6 +100,29 @@ export const profileController = async (req, res) => {
       user: req.user
     })
   } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+}
+
+// logout controller
+
+export const logoutController = async (req, res) => {
+  try {
+
+    const token = req.cookies.token || req.headers.authorization.split(" ")[1];
+
+    redisClient.set(token, "logout", "EX", 60 * 60 * 24);
+
+    res.status(200).json({
+      success: true,
+      message: "Logout successfully"
+    });
+    
+  } catch (error) {
+    console.log("Error during logout: ", error);
     res.status(500).json({
       success: false,
       message: error.message
