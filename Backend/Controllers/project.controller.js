@@ -18,18 +18,58 @@ export const createProjectController = async (req, res) => {
     const { name } = req.body;
     const loggedInUser = await userModel.findOne({ email: req.user.email});
 
+    if(!loggedInUser){
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
     const userId = loggedInUser._id;
 
     const newProject = await projectService.createProject({name, userId});
     
-    res.status(200).json(newProject); 
+    res.status(201).json({
+      success: true,
+      project: newProject
+    }); 
 
   } catch (error) {
     console.log("Error creating project", error);
-    res.status(400).send(error.message);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
   }
+}
 
-  
+export const getAllProjectsController = async (req, res) => {
+  try {
+    const loggedInUser = await userModel.findOne({ email: req.user.email });
+
+    if(!loggedInUser){
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    const allUserProjects = await projectService.getAllUserProjects({
+      userId: loggedInUser._id
+    });
+
+    return res.status(200).json({
+      success: true,
+      projects: allUserProjects
+    });
+
+  } catch (error) {
+    console.log("Error fetching projects", error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
 }
   
 

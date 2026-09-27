@@ -5,15 +5,16 @@ const projectSchema = new mongoose.Schema({
     type: String,
     lowercase: true,
     required: [true, "Project name is required"],
-    unique: [true, "Project name already exists"],
+    unique: true,
     trim: true
   },
 
-  users: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
-  }
-  
+  users: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    }
+  ]
 })
 
 const Project = mongoose.model("Project", projectSchema);
