@@ -90,3 +90,4 @@ temp/
 # ================================
 data/
 mongodb-data/
+/node_modules
