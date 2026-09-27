@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import axios from '../config/axios'
 
@@ -36,7 +36,7 @@ const Register = () => {
 
             console.log(res.data)
 
-            navigate('/login')
+            navigate('/')
         } catch (err) {
             console.log(err.response?.data)
 
@@ -166,7 +166,7 @@ const Register = () => {
 
                             <Link
                                 to="/login"
-                                className="text-blue-400 hover:text-blue-300 font-medium transition"
+                                className="text-blue-400 hover:text-blue-300 font-medium transition "
                             >
                                 Login
                             </Link>

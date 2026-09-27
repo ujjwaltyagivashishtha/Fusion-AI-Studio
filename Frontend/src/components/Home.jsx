@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import axios from '../config/axios'
 import { useNavigate } from 'react-router-dom'
 
 const Home = () => {
-    const [user, setUser] = useState(null)
+    const [user] = useState(null)
 
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [projectName, setProjectName] = useState('')
@@ -19,13 +19,10 @@ const Home = () => {
         try {
             setLoading(true)
             setError('')
-
             const res = await axios.get('/projects/all')
-
             setProjects(res.data.projects || [])
         } catch (err) {
             console.error(err)
-
             setError(
                 err.response?.data?.message ||
                 'Unable to load projects. Please try again.'
@@ -36,7 +33,31 @@ const Home = () => {
     }
 
     useEffect(() => {
-        fetchProjects()
+        let isMounted = true
+        axios.get('/projects/all')
+            .then((res) => {
+                if (isMounted) {
+                    setProjects(res.data.projects || [])
+                }
+            })
+            .catch((err) => {
+                if (isMounted) {
+                    console.error(err)
+                    setError(
+                        err.response?.data?.message ||
+                        'Unable to load projects. Please try again.'
+                    )
+                }
+            })
+            .finally(() => {
+                if (isMounted) {
+                    setLoading(false)
+                }
+            })
+
+        return () => {
+            isMounted = false
+        }
     }, [])
 
     // Create project
