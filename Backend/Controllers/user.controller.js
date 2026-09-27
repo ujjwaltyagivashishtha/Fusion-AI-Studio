@@ -22,6 +22,8 @@ export const registerUserController = async (req, res) => {
 
       const token = await user.generateToken();
 
+      delete user?._doc.password;
+
       res.status(200).json({
         user,
         token
@@ -40,7 +42,7 @@ export const registerUserController = async (req, res) => {
 export const loginUserController = async (req, res) => {
   const errors = validationResult(req);
 
-  if(!errors.isEmpty){
+  if(!errors.isEmpty()){
     return res.status(400).json({
       errors: errors.array(),
       success: false,
@@ -70,7 +72,8 @@ export const loginUserController = async (req, res) => {
     } 
 
     const token = await user.generateToken();
-    console.log(token);
+
+    delete user?._doc.password;
 
     res.status(200).json({
       success: true,
@@ -112,7 +115,7 @@ export const profileController = async (req, res) => {
 export const logoutController = async (req, res) => {
   try {
 
-    const token = req.cookies.token || req.headers.authorization.split(" ")[1];
+    const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
 
     redisClient.set(token, "logout", "EX", 60 * 60 * 24);
 
