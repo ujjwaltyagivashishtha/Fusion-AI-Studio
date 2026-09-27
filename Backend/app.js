@@ -3,6 +3,7 @@ import express from "express";
 import morgan from "morgan";
 import connectDB from "./db/db.js";
 import userRoutes from "./routes/user.route.js";
+import projectRoutes from "./routes/project.route.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
@@ -20,6 +21,7 @@ app.use(cookieParser());
 
 
 app.use("/api/v1/users", userRoutes); // http://localhost:3000/api/v1/users/register
+app.use("/api/v1/projects", projectRoutes); // http://localhost:3000/api/v1/projects/create
 
 
 app.get("/", (req,res) => {
