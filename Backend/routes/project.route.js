@@ -18,4 +18,11 @@ router.get(
   projectController.getAllProjectsController
 );
 
+router.put(
+  "/add-user",
+  authMiddleware.authUser,
+  body("users").isArray().withMessage("Users must be an array").bail().custom((users) => users.every((user) => typeof user === "string")).withMessage("Each user must be a string"), 
+  projectController.addUserToProjectController
+)
+
 export default router;
