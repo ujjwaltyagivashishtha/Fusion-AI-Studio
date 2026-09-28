@@ -14,7 +14,7 @@ export const createProjectController = async (req, res) => {
     })
   }
 
-  try {
+  try { 
     const { name } = req.body;
     const loggedInUser = await userModel.findOne({ email: req.user.email});
 
@@ -72,4 +72,13 @@ export const getAllProjectsController = async (req, res) => {
   }
 }
   
+export const addUserToProjectController = async (req, res) => {
+  const errors = validationResult(req);
+
+  if(!errors.isEmpty){
+    return res.status(400).json({
+      errors: errors.array()
+    })
+  }
+}
 
