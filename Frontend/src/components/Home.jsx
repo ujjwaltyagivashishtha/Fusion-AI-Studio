@@ -416,7 +416,7 @@ const Home = () => {
                                 type="text"
                                 value={projectName}
                                 onChange={(e) => setProjectName(e.target.value)}
-                                placeholder="e.g. Bank Transaction System"
+                                placeholder="e.g. Ecommerce Site"
                                 autoFocus
                                 disabled={creating}
                                 className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-600 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50"
