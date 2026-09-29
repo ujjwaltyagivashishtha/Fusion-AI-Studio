@@ -92,7 +92,7 @@ export const getProjectByIdService = async({ projectId }) => {
     throw new Error("Invalid Project ID")
   }
 
-  const project = await projectModel.findById({ 
+  const project = await projectModel.findOne({ 
     _id: projectId 
   }).populate("users");
   return project;
