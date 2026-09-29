@@ -15,3 +15,15 @@ export const registerUser = async ({
 
   return user;
 }
+
+
+export const getAllUser = async({ userId }) => {
+  if(!userId){
+    throw new Error("User ID is required");
+  }
+
+  const users = await userModel.find({ _id: { $ne: userId } });
+
+  return users;
+}
+  
