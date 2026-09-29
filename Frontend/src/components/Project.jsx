@@ -63,7 +63,8 @@ const Project = () => {
     const { user } = useContext(UserContext)
 
     // Project data passed via router state or fallback
-    const projectData = location.state?.project || { name: 'Demo Workspace', users: [user?.email || 'User'] }
+    const initialProject = location.state?.project || { name: 'Demo Workspace', users: [user?.email || 'User'] }
+    const [project, setProject] = useState(initialProject)
 
     // Files state
     const [files, setFiles] = useState(INITIAL_FILES)
@@ -76,7 +77,7 @@ const Project = () => {
     const [aiMessages, setAiMessages] = useState([
         {
             sender: 'ai',
-            text: `Hello ${user?.email ? user.email.split('@')[0] : 'Developer'}! I'm your Fusion AI Coding Partner for **${projectData.name}**. How can I help you build or refactor today?`
+            text: `Hello ${user?.email ? user.email.split('@')[0] : 'Developer'}! I'm your Fusion AI Coding Partner for **${project.name}**. How can I help you build or refactor today?`
         }
     ])
     const [prompt, setPrompt] = useState('')
@@ -85,15 +86,86 @@ const Project = () => {
     // Bottom Drawer State ('terminal' | 'preview' | 'hidden')
     const [bottomTab, setBottomTab] = useState('terminal')
     const [logs, setLogs] = useState([
-        `[SYSTEM] Workspace initialized for project "${projectData.name}"`,
+        `[SYSTEM] Workspace initialized for project "${project.name}"`,
         `[SUCCESS] Connected to Fusion AI Cloud Runner (Node v20.10.0)`,
         `[INFO] Web container listening on port 3000...`
     ])
 
-    // Invite Modal State
+    // Invite Modal & Collaborators State
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
-    const [inviteEmail, setInviteEmail] = useState('')
-    const [collaborators, setCollaborators] = useState(projectData.users || [user?.email || 'User'])
+    const [allUsers, setAllUsers] = useState([])
+    const [selectedUserIds, setSelectedUserIds] = useState([])
+    const [collaborators, setCollaborators] = useState(project.users || [])
+    const [addingCollaborators, setAddingCollaborators] = useState(false)
+
+    // Sync project details from Backend API
+    useEffect(() => {
+        if (project._id) {
+            axios.get(`/projects/get-project/${project._id}`)
+                .then((res) => {
+                    if (res.data.project) {
+                        setProject(res.data.project)
+                        setCollaborators(res.data.project.users || [])
+                    }
+                })
+                .catch((err) => {
+                    console.error('Error fetching project details:', err)
+                })
+        }
+    }, [project._id])
+
+    // Fetch registered users when invite modal opens
+    const handleOpenInviteModal = () => {
+        setIsInviteModalOpen(true)
+        axios.get('/users/all')
+            .then((res) => {
+                setAllUsers(res.data.users || [])
+            })
+            .catch((err) => {
+                console.error('Error fetching users:', err)
+            })
+    }
+
+    // Toggle user selection
+    const toggleSelectUser = (id) => {
+        if (selectedUserIds.includes(id)) {
+            setSelectedUserIds(selectedUserIds.filter(uId => uId !== id))
+        } else {
+            setSelectedUserIds([...selectedUserIds, id])
+        }
+    }
+
+    // Add collaborators to backend
+    const handleAddCollaboratorsSubmit = async (e) => {
+        e.preventDefault()
+        if (selectedUserIds.length === 0 || !project._id) return
+
+        try {
+            setAddingCollaborators(true)
+            const res = await axios.put('/projects/add-user', {
+                projectId: project._id,
+                users: selectedUserIds
+            })
+
+            if (res.data.project) {
+                // Re-fetch project to get populated user objects
+                const updatedRes = await axios.get(`/projects/get-project/${project._id}`)
+                if (updatedRes.data.project) {
+                    setProject(updatedRes.data.project)
+                    setCollaborators(updatedRes.data.project.users || [])
+                }
+            }
+
+            setLogs(prev => [...prev, `[MEMBER] Added ${selectedUserIds.length} new collaborator(s)`])
+            setSelectedUserIds([])
+            setIsInviteModalOpen(false)
+        } catch (err) {
+            console.error('Failed to add users:', err)
+        } finally {
+            setAddingCollaborators(false)
+        }
+    }
+
 
     // Select file handler
     const handleSelectFile = (fileName) => {
@@ -225,8 +297,8 @@ const Project = () => {
                             ))}
                         </div>
                         <button
-                            onClick={() => setIsInviteModalOpen(true)}
-                            className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-blue-400 hover:text-white hover:border-blue-500/30 transition flex items-center gap-1"
+                            onClick={handleOpenInviteModal}
+                            className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-blue-400 hover:text-white hover:border-blue-500/30 transition flex items-center gap-1 cursor-pointer"
                         >
                             <i className="ri-user-add-line"></i>
                             <span className="text-[11px] font-semibold">Invite</span>
@@ -533,7 +605,7 @@ const Project = () => {
             {/* ================= INVITE MEMBER MODAL ================= */}
             {isInviteModalOpen && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn"
                     onMouseDown={(e) => {
                         if (e.target === e.currentTarget) setIsInviteModalOpen(false)
                     }}
@@ -542,29 +614,58 @@ const Project = () => {
                         <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
                             <h3 className="text-base font-bold text-white flex items-center gap-2">
                                 <i className="ri-user-add-line text-blue-400"></i>
-                                Invite Collaborator
+                                Add Collaborators
                             </h3>
                             <button onClick={() => setIsInviteModalOpen(false)} className="text-slate-400 hover:text-white">
                                 <i className="ri-close-line text-lg"></i>
                             </button>
                         </div>
 
-                        <form onSubmit={handleAddCollaborator} className="space-y-4">
+                        <form onSubmit={handleAddCollaboratorsSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                                    Collaborator Email Address
+                                <label className="block text-xs font-semibold text-slate-300 mb-2">
+                                    Select Registered Users ({selectedUserIds.length} selected)
                                 </label>
-                                <input
-                                    type="email"
-                                    value={inviteEmail}
-                                    onChange={(e) => setInviteEmail(e.target.value)}
-                                    placeholder="colleague@example.com"
-                                    autoFocus
-                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white outline-none focus:border-blue-500"
-                                />
+                                
+                                <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+                                    {allUsers.length === 0 ? (
+                                        <p className="text-xs text-slate-500 py-4 text-center">No other registered users found.</p>
+                                    ) : (
+                                        allUsers.map((u) => {
+                                            const isSelected = selectedUserIds.includes(u._id)
+                                            const isAlreadyInProject = collaborators.some(c => (c._id || c) === u._id)
+
+                                            return (
+                                                <div
+                                                    key={u._id}
+                                                    onClick={() => !isAlreadyInProject && toggleSelectUser(u._id)}
+                                                    className={`p-3 rounded-2xl border text-xs flex items-center justify-between transition cursor-pointer ${
+                                                        isAlreadyInProject 
+                                                            ? 'bg-slate-900/40 border-slate-800/60 opacity-50 cursor-not-allowed'
+                                                            : isSelected 
+                                                                ? 'bg-blue-600/20 border-blue-500/50 text-white' 
+                                                                : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-850'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-7 h-7 rounded-full bg-indigo-600 text-white font-bold text-[10px] flex items-center justify-center uppercase">
+                                                            {u.email[0]}
+                                                        </div>
+                                                        <span className="font-medium truncate">{u.email}</span>
+                                                    </div>
+                                                    {isAlreadyInProject ? (
+                                                        <span className="text-[10px] text-slate-500 font-semibold">Already Member</span>
+                                                    ) : (
+                                                        <i className={isSelected ? "ri-checkbox-circle-fill text-blue-400 text-lg" : "ri-checkbox-blank-circle-line text-slate-600 text-lg"}></i>
+                                                    )}
+                                                </div>
+                                            )
+                                        })
+                                    )}
+                                </div>
                             </div>
 
-                            <div className="flex justify-end gap-2 pt-2">
+                            <div className="flex justify-end gap-2 pt-2 border-t border-slate-900">
                                 <button
                                     type="button"
                                     onClick={() => setIsInviteModalOpen(false)}
@@ -574,10 +675,17 @@ const Project = () => {
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={!inviteEmail.trim()}
-                                    className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white disabled:opacity-50"
+                                    disabled={selectedUserIds.length === 0 || addingCollaborators}
+                                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-xs font-semibold text-white disabled:opacity-40 flex items-center gap-2 cursor-pointer"
                                 >
-                                    Send Invite
+                                    {addingCollaborators ? (
+                                        <>
+                                            <i className="ri-loader-4-line animate-spin"></i>
+                                            <span>Adding...</span>
+                                        </>
+                                    ) : (
+                                        <span>Add Selected Members</span>
+                                    )}
                                 </button>
                             </div>
                         </form>
