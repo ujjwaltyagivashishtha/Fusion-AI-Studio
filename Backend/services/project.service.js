@@ -56,7 +56,7 @@ export const addUserToProjectService = async ({ projectId, users, userId }) => {
     throw new Error("Users are required");
   } 
 
-  if(Array.isArray(users) || users.some(userId => !mongoose.Types.ObjectId.isValid(userId))){
+  if(!Array.isArray(users) || users.some(userId => !mongoose.Types.ObjectId.isValid(userId))){
     throw new Error("Invalid user ID");
   }
 
@@ -73,16 +73,11 @@ export const addUserToProjectService = async ({ projectId, users, userId }) => {
     throw new Error("User not belong to this project");
   }
 
-  const updatedProject = await projectModel.findOne({
-    _id: projectId
-  }, {
-    $addToSet: {
-      users: {
-        $each: users
-      }
-    },
-    new: true
-  })
+  const updatedProject = await projectModel.findOneAndUpdate(
+    { _id: projectId },
+    { $addToSet: { users: { $each: users } } },
+    { new: true }
+  )
 
   return updatedProject;
 }
