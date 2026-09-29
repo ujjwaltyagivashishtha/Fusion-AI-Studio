@@ -80,5 +80,18 @@ export const addUserToProjectController = async (req, res) => {
       errors: errors.array()
     })
   }
+
+  try {
+    const { projectId, users } = req.body;
+    
+    
+  } catch (error) {
+    console.log("Error adding user to project", error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+    
+  }
 }
 
