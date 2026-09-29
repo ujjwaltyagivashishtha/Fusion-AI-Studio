@@ -84,6 +84,25 @@ export const addUserToProjectController = async (req, res) => {
   try {
     const { projectId, users } = req.body;
     
+    const loggedInUser = await userModel.findOne({ email: req.user.email });
+
+    if(!loggedInUser){
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    const updatedProject = await projectService.addUserToProjectService({
+      projectId,
+      users,
+      userId: loggedInUser._id  
+    })
+    
+    return res.status(200).json({
+      success: true,
+      project: updatedProject 
+    })
     
   } catch (error) {
     console.log("Error adding user to project", error);
@@ -94,4 +113,6 @@ export const addUserToProjectController = async (req, res) => {
     
   }
 }
+
+
 
