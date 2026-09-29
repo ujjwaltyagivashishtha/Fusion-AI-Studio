@@ -75,7 +75,7 @@ export const getAllProjectsController = async (req, res) => {
 export const addUserToProjectController = async (req, res) => {
   const errors = validationResult(req);
 
-  if(!errors.isEmpty){
+  if(!errors.isEmpty()){
     return res.status(400).json({
       errors: errors.array()
     })
@@ -116,3 +116,22 @@ export const addUserToProjectController = async (req, res) => {
 
 
 
+export const getProjectByIdController = async (req, res) => {
+  const { projectId } = req.params;
+
+  try {
+    const project = await projectService.getProjectByIdService({ projectId });
+    return res.status(200).json({
+      success: true,
+      project: project
+    });
+  } catch (error) {
+    console.log("Error fetching project", error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+}
+
+  
