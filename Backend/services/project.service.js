@@ -40,3 +40,13 @@ export const getAllUserProjects = async ({ userId }) => {
 
   return userProjects;
 }
+
+
+export const addUserToProjectService = async ({ projectId,users }) => { 
+  if(!projectId){
+    throw new Error("Project ID is required");
+  }
+
+  
+}
+  
