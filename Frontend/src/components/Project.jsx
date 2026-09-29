@@ -93,10 +93,13 @@ const Project = () => {
 
     // Invite Modal & Collaborators State
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
+    const [copiedId, setCopiedId] = useState(false)
     const [allUsers, setAllUsers] = useState([])
     const [selectedUserIds, setSelectedUserIds] = useState([])
     const [collaborators, setCollaborators] = useState(project.users || [])
     const [addingCollaborators, setAddingCollaborators] = useState(false)
+
 
     // Sync project details from Backend API
     useEffect(() => {
@@ -225,7 +228,7 @@ const Project = () => {
             } else if (userMsg.toLowerCase().includes('bug') || userMsg.toLowerCase().includes('fix')) {
                 aiReply = `I audited your code in **${activeFile}**. No critical syntax errors found. Make sure environment variables like \`PORT\` or \`JWT_SECRET\` are defined.`
             } else {
-                aiReply = `Got it! I am ready to process changes for **${projectData.name}**. Would you like me to write code snippets directly to **${activeFile}** or execute a test run?`
+                aiReply = `Got it! I am ready to process changes for **${project.name}**. Would you like me to write code snippets directly to **${activeFile}** or execute a test run?`
             }
 
             setAiMessages(prev => [...prev, { sender: 'ai', text: aiReply }])
@@ -267,18 +270,23 @@ const Project = () => {
 
                     <div className="h-5 w-[1px] bg-slate-800" />
 
-                    <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                    <button
+                        onClick={() => setIsDetailsModalOpen(true)}
+                        className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-slate-900 transition border border-transparent hover:border-slate-800 cursor-pointer group"
+                        title="Click to view full project details"
+                    >
+                        <div className="w-7 h-7 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 group-hover:scale-105 transition">
                             <i className="ri-folder-3-line text-sm"></i>
                         </div>
-                        <h1 className="font-bold text-sm text-white truncate max-w-[200px] sm:max-w-xs">
-                            {projectData.name}
+                        <h1 className="font-bold text-sm text-white truncate max-w-[180px] sm:max-w-xs group-hover:text-blue-300 transition">
+                            {project.name}
                         </h1>
-                        <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-semibold text-emerald-400">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                            Live
-                        </span>
-                    </div>
+                        <i className="ri-information-line text-slate-400 text-sm group-hover:text-blue-400 transition"></i>
+                    </button>
+                    <span className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-semibold text-emerald-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                        Live
+                    </span>
                 </div>
 
                 {/* Right Actions: Members & Controls */}
@@ -693,8 +701,138 @@ const Project = () => {
                 </div>
             )}
 
+            {/* ================= PROJECT DETAILS MODAL ================= */}
+            {isDetailsModalOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn"
+                    onMouseDown={(e) => {
+                        if (e.target === e.currentTarget) setIsDetailsModalOpen(false)
+                    }}
+                >
+                    <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-950 p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+
+                        {/* Header */}
+                        <div className="flex items-start justify-between pb-4 mb-5 border-b border-slate-800">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 border border-blue-500/30 flex items-center justify-center text-white shadow-lg">
+                                    <i className="ri-folder-3-line text-2xl"></i>
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-lg font-bold text-white">{project.name}</h3>
+                                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-semibold text-emerald-400">
+                                            Active Studio
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-slate-400 mt-0.5">Project Workspace Information</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsDetailsModalOpen(false)}
+                                className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition"
+                            >
+                                <i className="ri-close-line text-lg"></i>
+                            </button>
+                        </div>
+
+                        {/* Body Details */}
+                        <div className="space-y-5">
+                            {/* Project Database ID */}
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                                    Project ID
+                                </label>
+                                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-200">
+                                    <span className="truncate flex-grow">{project._id || 'Local-Development-ID'}</span>
+                                    {project._id && (
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(project._id)
+                                                setCopiedId(true)
+                                                setTimeout(() => setCopiedId(false), 2000)
+                                            }}
+                                            className="px-2.5 py-1 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:text-white text-[11px] font-sans font-semibold transition flex items-center gap-1"
+                                        >
+                                            <i className={copiedId ? "ri-check-line text-emerald-400" : "ri-file-copy-line"}></i>
+                                            <span>{copiedId ? "Copied!" : "Copy"}</span>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Collaborators List */}
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                        Project Members ({collaborators.length})
+                                    </label>
+                                    <button
+                                        onClick={() => {
+                                            setIsDetailsModalOpen(false)
+                                            handleOpenInviteModal()
+                                        }}
+                                        className="text-xs text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1"
+                                    >
+                                        <i className="ri-user-add-line"></i>
+                                        <span>Add Member</span>
+                                    </button>
+                                </div>
+
+                                <div className="max-h-40 overflow-y-auto space-y-2 pr-1">
+                                    {collaborators.map((member, idx) => {
+                                        const emailStr = typeof member === 'string' ? member : member.email
+                                        const isOwner = idx === 0
+
+                                        return (
+                                            <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 text-xs">
+                                                <div className="flex items-center gap-3 truncate">
+                                                    <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 font-bold text-[10px] text-white flex items-center justify-center uppercase shrink-0">
+                                                        {emailStr ? emailStr[0] : 'U'}
+                                                    </div>
+                                                    <span className="font-medium text-slate-200 truncate">{emailStr}</span>
+                                                </div>
+                                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${isOwner ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-slate-800 text-slate-400'}`}>
+                                                    {isOwner ? 'Owner' : 'Collaborator'}
+                                                </span>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Workspace Stats */}
+                            <div className="grid grid-cols-2 gap-3 pt-2">
+                                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                                    <p className="text-[11px] text-slate-400 font-medium">Files Count</p>
+                                    <p className="text-base font-bold text-white mt-0.5">{Object.keys(files).length} Files</p>
+                                </div>
+                                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                                    <p className="text-[11px] text-slate-400 font-medium">Environment</p>
+                                    <p className="text-base font-bold text-emerald-400 mt-0.5 flex items-center gap-1.5">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                        Node v20.10
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="mt-6 pt-4 border-t border-slate-800 flex items-center justify-end">
+                            <button
+                                onClick={() => setIsDetailsModalOpen(false)}
+                                className="px-5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold text-slate-300 transition cursor-pointer"
+                            >
+                                Close Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     )
 }
 
 export default Project
+
