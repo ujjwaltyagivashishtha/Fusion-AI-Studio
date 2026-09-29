@@ -132,3 +132,26 @@ export const logoutController = async (req, res) => {
     })
   }
 }
+
+// 
+export const getAllUsersController = async(req, res) => {
+  try {
+    const loggedInUser = await userModel.findOne({ email: req.user.email });
+
+    const allUsers = await userService.getAllUser({
+      userId: loggedInUser._id
+    });
+
+    return res.status(200).json({
+      success: true,
+      users: allUsers
+    });
+
+  } catch (error) {
+    console.log("Error fetching all users: ", error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+}     
