@@ -1,10 +1,11 @@
 import { useState, useEffect, useContext } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import axios from '../config/axios'
 import { UserContext } from '../context/user.context'
 import CodeEditor from './CodeEditor.jsx'
 import CommandPalette from './CommandPalette.jsx'
 import ToastContainer from './Toast.jsx'
+import { intializeSocket, recieveMessage, sendMessage, disconnectSocket, removeListener } from '../config/socket.js'
 
 const INITIAL_FILES = {
   'app.js': `// Fusion AI Studio - Main Application Entry
@@ -102,11 +103,16 @@ body {
 const Project = () => {
     const location = useLocation()
     const navigate = useNavigate()
+    const { id: routeProjectId } = useParams()
     const { user } = useContext(UserContext)
 
-    // Project state
+    // Project state & active project ID resolution
     const initialProject = location.state?.project || { name: 'Demo Workspace', users: [user?.email || 'User'] }
     const [project, setProject] = useState(initialProject)
+    const targetProjectId = routeProjectId || location.state?.project?._id || project._id
+
+    // Socket Connection State
+    const [socketConnected, setSocketConnected] = useState(false)
 
     // Files state
     const [files, setFiles] = useState(INITIAL_FILES)
@@ -183,9 +189,8 @@ const Project = () => {
 
     // Sync project details & preload users from Backend API
     useEffect(() => {
-        const projectId = location.state?.project?._id || project._id
-        if (projectId) {
-            axios.get(`/projects/get-project/${projectId}`)
+        if (targetProjectId) {
+            axios.get(`/projects/get-project/${targetProjectId}`)
                 .then((res) => {
                     if (res.data.project) {
                         setProject(res.data.project)
@@ -205,7 +210,80 @@ const Project = () => {
             .catch((err) => {
                 console.error('Error fetching users:', err)
             })
-    }, [location.state?.project?._id])
+    }, [targetProjectId])
+
+    // Initialize Real-time Socket Connection for this project
+    useEffect(() => {
+        if (!targetProjectId) return
+
+        // Initialize socket with current projectId and auth token
+        const socket = intializeSocket(targetProjectId)
+
+        // Listen for incoming project messages (collaborator chat or real-time broadcast)
+        const handleProjectMessage = (data) => {
+            console.log('Received socket message:', data)
+            const senderId = data.sender?._id || data.sender
+            const isSelf = senderId === user?._id || data.sender?.email === user?.email
+
+            if (isSelf) return // Ignore echo of own message
+
+            if (data.sender) {
+                const senderName = typeof data.sender === 'object'
+                    ? data.sender.email?.split('@')[0] || 'Collaborator'
+                    : String(data.sender).split('@')[0]
+
+                setAiMessages((prev) => [
+                    ...prev,
+                    {
+                        sender: 'collaborator',
+                        senderName,
+                        text: data.message
+                    }
+                ])
+                addToast(`New message from ${senderName}`, 'info')
+            } else {
+                setAiMessages((prev) => [
+                    ...prev,
+                    {
+                        sender: 'ai',
+                        text: data.message
+                    }
+                ])
+            }
+        }
+
+        const handleConnect = () => {
+            setSocketConnected(true)
+            setLogs((prev) => [...prev, `[SOCKET] Real-time collaboration connected`])
+        }
+
+        const handleDisconnect = () => {
+            setSocketConnected(false)
+            setLogs((prev) => [...prev, `[SOCKET] Disconnected from workspace channel`])
+        }
+
+        const handleConnectError = (err) => {
+            setSocketConnected(false)
+            console.error('Socket connection error:', err?.message)
+        }
+
+        recieveMessage('project-message', handleProjectMessage)
+        recieveMessage('connect', handleConnect)
+        recieveMessage('disconnect', handleDisconnect)
+        recieveMessage('connect_error', handleConnectError)
+
+        if (socket?.connected) {
+            setSocketConnected(true)
+        }
+
+        return () => {
+            removeListener('project-message', handleProjectMessage)
+            removeListener('connect', handleConnect)
+            removeListener('disconnect', handleDisconnect)
+            removeListener('connect_error', handleConnectError)
+            disconnectSocket()
+        }
+    }, [targetProjectId, user?._id, user?.email])
 
     // Auto-fetch users when modal opens
     const fetchUsers = () => {
@@ -254,18 +332,19 @@ const Project = () => {
     const addCollaborators = async (e) => {
         e?.preventDefault()
         const usersToAdd = Array.from(selectedUserId)
-        if (usersToAdd.length === 0 || !project._id) return
+        const currentId = project._id || targetProjectId
+        if (usersToAdd.length === 0 || !currentId) return
 
         try {
             setAddingCollaborators(true)
             const res = await axios.put('/projects/add-user', {
-                projectId: project._id,
+                projectId: currentId,
                 users: usersToAdd
             })
 
             if (res.data.project) {
                 // Re-fetch project to get populated user objects
-                const updatedRes = await axios.get(`/projects/get-project/${project._id}`)
+                const updatedRes = await axios.get(`/projects/get-project/${currentId}`)
                 if (updatedRes.data.project) {
                     setProject(updatedRes.data.project)
                     setCollaborators(updatedRes.data.project.users || [])
@@ -353,14 +432,25 @@ const Project = () => {
         addToast('Live preview container updated!', 'success')
     }
 
-    // AI Prompt Send Handler
+    // AI Prompt / Project Message Send Handler
     const handleSendPrompt = (e) => {
         e?.preventDefault()
         if (!prompt.trim() || aiLoading) return
 
         const userMsg = prompt.trim()
+        const currentId = project._id || targetProjectId
         setPrompt('')
         setAiMessages((prev) => [...prev, { sender: 'user', text: userMsg }])
+
+        // Emit real-time project message to socket server
+        if (currentId) {
+            sendMessage('project-message', {
+                message: userMsg,
+                sender: user,
+                projectId: currentId
+            })
+        }
+
         setAiLoading(true)
 
         setTimeout(() => {
@@ -442,6 +532,15 @@ const Project = () => {
                     <span className="hidden md:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-semibold text-emerald-400">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
                         Node v20.10
+                    </span>
+
+                    <span className={`hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border transition ${
+                        socketConnected 
+                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                            : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                    }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${socketConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                        {socketConnected ? 'Realtime Live' : 'Connecting...'}
                     </span>
                 </div>
 
@@ -858,8 +957,16 @@ const Project = () => {
                                     <div className={`p-3 rounded-2xl max-w-[95%] leading-relaxed ${
                                         isUser
                                             ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-none shadow-md'
+                                            : msg.sender === 'collaborator'
+                                            ? 'bg-indigo-950/80 border border-indigo-700/50 text-slate-100 rounded-bl-none shadow-md'
                                             : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none'
                                     }`}>
+                                        {msg.sender === 'collaborator' && (
+                                            <p className="text-[10px] font-bold text-indigo-400 mb-1 flex items-center gap-1">
+                                                <i className="ri-user-smile-line"></i>
+                                                {msg.senderName || 'Team Member'}
+                                            </p>
+                                        )}
                                         <p className="whitespace-pre-wrap">{msg.text.split('```')[0]}</p>
 
                                         {/* If response contains a code snippet, display interactive card */}
@@ -898,7 +1005,7 @@ const Project = () => {
                                         )}
                                     </div>
                                     <span className="text-[9px] text-slate-500 mt-1 px-1">
-                                        {isUser ? 'You' : 'Fusion AI'}
+                                        {isUser ? 'You' : msg.sender === 'collaborator' ? msg.senderName || 'Collaborator' : 'Fusion AI'}
                                     </span>
                                 </div>
                             )
