@@ -683,7 +683,7 @@ const Project = () => {
                         if (e.target === e.currentTarget) setIsModalOpen(false)
                     }}
                 >
-                    <div className="w-full max-w-md sm:max-w-lg rounded-3xl border border-white/10 bg-slate-950 p-5 sm:p-6 shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden">
+                    <div className="w-full max-w-md sm:max-w-lg rounded-3xl border border-white/10 bg-slate-950 p-5 sm:p-6 pb-20 sm:pb-24 shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden">
                         <div className="absolute top-0 right-0 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
                         {/* Modal Header */}
@@ -754,7 +754,7 @@ const Project = () => {
                         )}
 
                         {/* Users List Container */}
-                        <div className="flex-grow overflow-y-auto space-y-2 py-2 pr-1 min-h-[160px] max-h-64 sm:max-h-72">
+                        <div className="flex-grow overflow-y-auto space-y-2 py-2 pr-1 min-h-[160px] max-h-60 sm:max-h-64">
                             {fetchingUsers ? (
                                 <div className="flex flex-col items-center justify-center py-8 text-slate-400 gap-2">
                                     <i className="ri-loader-4-line animate-spin text-2xl text-blue-400"></i>
@@ -825,41 +825,41 @@ const Project = () => {
                             )}
                         </div>
 
-                        {/* Modal Footer / Action Buttons */}
-                        <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-slate-900 shrink-0 mt-1">
-                            <span className="text-[11px] text-slate-500 text-center sm:text-left">
+                        {/* Status bar */}
+                        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-900 shrink-0">
+                            <span>
                                 {selectedUserId.length > 0
                                     ? `${selectedUserId.length} user${selectedUserId.length > 1 ? 's' : ''} selected`
                                     : 'Select one or more users to add'}
                             </span>
-                            <div className="flex items-center justify-end gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsModalOpen(false)}
-                                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition cursor-pointer"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleAddCollaboratorsSubmit}
-                                    disabled={selectedUserId.length === 0 || addingCollaborators}
-                                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-xs font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 transition shadow-lg shadow-blue-600/20 cursor-pointer"
-                                >
-                                    {addingCollaborators ? (
-                                        <>
-                                            <i className="ri-loader-4-line animate-spin text-sm"></i>
-                                            <span>Adding...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <i className="ri-user-add-line text-sm"></i>
-                                            <span>Add Selected ({selectedUserId.length})</span>
-                                        </>
-                                    )}
-                                </button>
-                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsModalOpen(false)}
+                                className="text-slate-400 hover:text-white transition cursor-pointer text-xs"
+                            >
+                                Cancel
+                            </button>
                         </div>
+
+                        {/* Fixed Absolute Bottom Button */}
+                        <button
+                            type="button"
+                            onClick={handleAddCollaboratorsSubmit}
+                            disabled={selectedUserId.length === 0 || addingCollaborators}
+                            className="absolute bottom-4 left-4 right-4 sm:bottom-5 sm:left-6 sm:right-6 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-xs sm:text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 transition shadow-xl shadow-blue-600/30 cursor-pointer"
+                        >
+                            {addingCollaborators ? (
+                                <>
+                                    <i className="ri-loader-4-line animate-spin text-sm"></i>
+                                    <span>Adding...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <i className="ri-user-add-line text-sm"></i>
+                                    <span>Add Collaborator</span>
+                                </>
+                            )}
+                        </button>
                     </div>
                 </div>
             )}
