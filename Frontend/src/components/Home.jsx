@@ -381,7 +381,7 @@ const Home = () => {
                             {filteredProjects.map((project) => (
                                 <div
                                     key={project._id}
-                                    onClick={() => navigate('/project', { state: { project } })}
+                                    onClick={() => navigate(`/project/${project._id}`, { state: { project } })}
                                     className="group relative cursor-pointer rounded-3xl border border-white/10 bg-slate-900/70 p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/40 hover:bg-slate-900/90 hover:shadow-2xl hover:shadow-blue-500/10 flex flex-col justify-between overflow-hidden"
                                 >
                                     {/* Ambient card background hover glow */}
@@ -442,7 +442,7 @@ const Home = () => {
                             {filteredProjects.map((project) => (
                                 <div
                                     key={project._id}
-                                    onClick={() => navigate('/project', { state: { project } })}
+                                    onClick={() => navigate(`/project/${project._id}`, { state: { project } })}
                                     className="group cursor-pointer rounded-2xl border border-white/10 bg-slate-900/70 p-4 backdrop-blur-xl transition duration-200 hover:border-blue-500/40 hover:bg-slate-900/90 flex items-center justify-between gap-4"
                                 >
                                     <div className="flex items-center gap-4">
