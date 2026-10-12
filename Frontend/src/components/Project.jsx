@@ -91,15 +91,26 @@ const Project = () => {
         `[INFO] Web container listening on port 3000...`
     ])
 
-    // Invite Modal & Collaborators State
-    const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
-    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
-    const [copiedId, setCopiedId] = useState(false)
-    const [allUsers, setAllUsers] = useState([])
-    const [selectedUserIds, setSelectedUserIds] = useState([])
+    // Users & Collaborators State
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [users, setUsers] = useState([])
+    const [selectedUserId, setSelectedUserId] = useState([])
+    const [userSearchQuery, setUserSearchQuery] = useState('')
+    const [fetchingUsers, setFetchingUsers] = useState(false)
     const [collaborators, setCollaborators] = useState(project.users || [])
     const [addingCollaborators, setAddingCollaborators] = useState(false)
 
+    // Details Modal & Misc State
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
+    const [copiedId, setCopiedId] = useState(false)
+
+    // Backwards-compatible aliases
+    const isInviteModalOpen = isModalOpen
+    const setIsInviteModalOpen = setIsModalOpen
+    const allUsers = users
+    const setAllUsers = setUsers
+    const selectedUserIds = selectedUserId
+    const setSelectedUserIds = setSelectedUserId
 
     // Sync project details from Backend API
     useEffect(() => {
@@ -117,37 +128,61 @@ const Project = () => {
         }
     }, [project._id])
 
-    // Fetch registered users when invite modal opens
-    const handleOpenInviteModal = () => {
-        setIsInviteModalOpen(true)
+    // Fetch registered users from backend API
+    const fetchUsers = () => {
+        setFetchingUsers(true)
         axios.get('/users/all')
             .then((res) => {
-                setAllUsers(res.data.users || [])
+                setUsers(res.data.users || [])
             })
             .catch((err) => {
                 console.error('Error fetching users:', err)
             })
+            .finally(() => {
+                setFetchingUsers(false)
+            })
     }
 
-    // Toggle user selection
-    const toggleSelectUser = (id) => {
-        if (selectedUserIds.includes(id)) {
-            setSelectedUserIds(selectedUserIds.filter(uId => uId !== id))
-        } else {
-            setSelectedUserIds([...selectedUserIds, id])
+    // Auto-fetch users whenever the modal opens
+    useEffect(() => {
+        if (isModalOpen) {
+            fetchUsers()
         }
+    }, [isModalOpen])
+
+    const handleOpenInviteModal = () => {
+        setIsModalOpen(true)
+        fetchUsers()
     }
 
-    // Add collaborators to backend
+    // Select or toggle user ID in state variable when user tile is clicked
+    const handleUserClick = (id) => {
+        setSelectedUserId((prev) => {
+            if (prev.includes(id)) {
+                return prev.filter((uId) => uId !== id)
+            } else {
+                return [...prev, id]
+            }
+        })
+    }
+    const toggleSelectUser = handleUserClick
+
+    // Filter users list based on search query
+    const filteredUsersList = users.filter((u) =>
+        (u.email || '').toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+        (u._id || '').toLowerCase().includes(userSearchQuery.toLowerCase())
+    )
+
+    // Add selected users to project via backend API
     const handleAddCollaboratorsSubmit = async (e) => {
-        e.preventDefault()
-        if (selectedUserIds.length === 0 || !project._id) return
+        e?.preventDefault()
+        if (selectedUserId.length === 0 || !project._id) return
 
         try {
             setAddingCollaborators(true)
             const res = await axios.put('/projects/add-user', {
                 projectId: project._id,
-                users: selectedUserIds
+                users: selectedUserId
             })
 
             if (res.data.project) {
@@ -159,9 +194,9 @@ const Project = () => {
                 }
             }
 
-            setLogs(prev => [...prev, `[MEMBER] Added ${selectedUserIds.length} new collaborator(s)`])
-            setSelectedUserIds([])
-            setIsInviteModalOpen(false)
+            setLogs(prev => [...prev, `[MEMBER] Added ${selectedUserId.length} new collaborator(s)`])
+            setSelectedUserId([])
+            setIsModalOpen(false)
         } catch (err) {
             console.error('Failed to add users:', err)
         } finally {
@@ -237,20 +272,6 @@ const Project = () => {
         }, 1000)
     }
 
-    // Add collaborator handler
-    const handleAddCollaborator = async (e) => {
-        e.preventDefault()
-        if (!inviteEmail.trim()) return
-
-        try {
-            setCollaborators(prev => [...prev, inviteEmail.trim()])
-            setLogs(prev => [...prev, `[MEMBER] Invited ${inviteEmail.trim()} to project ${projectData.name}`])
-            setInviteEmail('')
-            setIsInviteModalOpen(false)
-        } catch (err) {
-            console.error(err)
-        }
-    }
 
     return (
         <div className="h-screen w-screen bg-[#080C14] text-white flex flex-col overflow-hidden font-sans select-none">
@@ -290,8 +311,21 @@ const Project = () => {
                 </div>
 
                 {/* Right Actions: Members & Controls */}
-                <div className="flex items-center gap-3">
-                    {/* Member Avatars */}
+                <div className="flex items-center gap-2 sm:gap-3">
+                    {/* Mobile Users / Invite Button */}
+                    <button
+                        onClick={() => {
+                            setIsModalOpen(true)
+                            fetchUsers()
+                        }}
+                        className="flex md:hidden p-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-blue-400 hover:text-white hover:border-blue-500/30 transition items-center gap-1 cursor-pointer"
+                        title="View Users / Add Collaborators"
+                    >
+                        <i className="ri-group-line text-sm"></i>
+                        <span className="text-[11px] font-semibold">Users</span>
+                    </button>
+
+                    {/* Member Avatars & Desktop Invite Button */}
                     <div className="hidden md:flex items-center gap-2 pr-2 border-r border-slate-800">
                         <div className="flex -space-x-2">
                             {collaborators.slice(0, 4).map((c, i) => (
@@ -305,7 +339,10 @@ const Project = () => {
                             ))}
                         </div>
                         <button
-                            onClick={handleOpenInviteModal}
+                            onClick={() => {
+                                setIsModalOpen(true)
+                                fetchUsers()
+                            }}
                             className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-blue-400 hover:text-white hover:border-blue-500/30 transition flex items-center gap-1 cursor-pointer"
                         >
                             <i className="ri-user-add-line"></i>
@@ -337,13 +374,25 @@ const Project = () => {
                             <i className="ri-folders-line text-blue-400"></i>
                             Explorer
                         </span>
-                        <button
-                            onClick={() => setIsCreatingFile(true)}
-                            className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition"
-                            title="New File"
-                        >
-                            <i className="ri-file-add-line text-base"></i>
-                        </button>
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => {
+                                    setIsModalOpen(true)
+                                    fetchUsers()
+                                }}
+                                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-blue-400 transition"
+                                title="Select Users / Add Collaborators"
+                            >
+                                <i className="ri-user-add-line text-base"></i>
+                            </button>
+                            <button
+                                onClick={() => setIsCreatingFile(true)}
+                                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                                title="New File"
+                            >
+                                <i className="ri-file-add-line text-base"></i>
+                            </button>
+                        </div>
                     </div>
 
                     {/* New File Inline Form */}
@@ -393,14 +442,30 @@ const Project = () => {
 
                     {/* Collaborator Footer Widget */}
                     <div className="p-3 border-t border-white/10 bg-slate-900/40">
-                        <p className="text-[11px] font-semibold text-slate-400 mb-2 flex items-center justify-between">
-                            <span>TEAM MEMBERS</span>
-                            <span className="text-blue-400">{collaborators.length}</span>
-                        </p>
-                        <div className="space-y-1.5">
+                        <div className="flex items-center justify-between mb-2">
+                            <p className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
+                                <i className="ri-team-line text-blue-400"></i>
+                                <span>TEAM MEMBERS</span>
+                                <span className="px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[10px] font-bold">
+                                    {collaborators.length}
+                                </span>
+                            </p>
+                            <button
+                                onClick={() => {
+                                    setIsModalOpen(true)
+                                    fetchUsers()
+                                }}
+                                className="text-[11px] text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-0.5 transition cursor-pointer"
+                                title="Add Collaborators"
+                            >
+                                <i className="ri-user-add-line text-xs"></i>
+                                <span>Add</span>
+                            </button>
+                        </div>
+                        <div className="space-y-1.5 max-h-24 overflow-y-auto pr-1">
                             {collaborators.map((member, idx) => (
                                 <div key={idx} className="flex items-center gap-2 text-xs text-slate-300 truncate">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
                                     <span className="truncate">{typeof member === 'string' ? member : member.email}</span>
                                 </div>
                             ))}
@@ -610,93 +675,191 @@ const Project = () => {
 
             </div>
 
-            {/* ================= INVITE MEMBER MODAL ================= */}
-            {isInviteModalOpen && (
+            {/* ================= USERS / COLLABORATORS MODAL ================= */}
+            {isModalOpen && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 animate-fadeIn"
                     onMouseDown={(e) => {
-                        if (e.target === e.currentTarget) setIsInviteModalOpen(false)
+                        if (e.target === e.currentTarget) setIsModalOpen(false)
                     }}
                 >
-                    <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950 p-6 shadow-2xl relative">
-                        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
-                            <h3 className="text-base font-bold text-white flex items-center gap-2">
-                                <i className="ri-user-add-line text-blue-400"></i>
-                                Add Collaborators
-                            </h3>
-                            <button onClick={() => setIsInviteModalOpen(false)} className="text-slate-400 hover:text-white">
+                    <div className="w-full max-w-md sm:max-w-lg rounded-3xl border border-white/10 bg-slate-950 p-5 sm:p-6 shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden">
+                        <div className="absolute top-0 right-0 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-slate-800 shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 border border-blue-500/30 flex items-center justify-center text-white shadow-md">
+                                    <i className="ri-group-line text-lg"></i>
+                                </div>
+                                <div>
+                                    <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                                        Select Users
+                                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                                            {selectedUserId.length} Selected
+                                        </span>
+                                    </h3>
+                                    <p className="text-xs text-slate-400">Click a user tile to select their ID</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsModalOpen(false)}
+                                className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer"
+                                title="Close modal"
+                            >
                                 <i className="ri-close-line text-lg"></i>
                             </button>
                         </div>
 
-                        <form onSubmit={handleAddCollaboratorsSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-300 mb-2">
-                                    Select Registered Users ({selectedUserIds.length} selected)
-                                </label>
-                                
-                                <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
-                                    {allUsers.length === 0 ? (
-                                        <p className="text-xs text-slate-500 py-4 text-center">No other registered users found.</p>
-                                    ) : (
-                                        allUsers.map((u) => {
-                                            const isSelected = selectedUserIds.includes(u._id)
-                                            const isAlreadyInProject = collaborators.some(c => (c._id || c) === u._id)
-
-                                            return (
-                                                <div
-                                                    key={u._id}
-                                                    onClick={() => !isAlreadyInProject && toggleSelectUser(u._id)}
-                                                    className={`p-3 rounded-2xl border text-xs flex items-center justify-between transition cursor-pointer ${
-                                                        isAlreadyInProject 
-                                                            ? 'bg-slate-900/40 border-slate-800/60 opacity-50 cursor-not-allowed'
-                                                            : isSelected 
-                                                                ? 'bg-blue-600/20 border-blue-500/50 text-white' 
-                                                                : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-850'
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-7 h-7 rounded-full bg-indigo-600 text-white font-bold text-[10px] flex items-center justify-center uppercase">
-                                                            {u.email[0]}
-                                                        </div>
-                                                        <span className="font-medium truncate">{u.email}</span>
-                                                    </div>
-                                                    {isAlreadyInProject ? (
-                                                        <span className="text-[10px] text-slate-500 font-semibold">Already Member</span>
-                                                    ) : (
-                                                        <i className={isSelected ? "ri-checkbox-circle-fill text-blue-400 text-lg" : "ri-checkbox-blank-circle-line text-slate-600 text-lg"}></i>
-                                                    )}
-                                                </div>
-                                            )
-                                        })
-                                    )}
-                                </div>
+                        {/* Search Filter Bar */}
+                        <div className="pt-3.5 pb-2 shrink-0">
+                            <div className="relative">
+                                <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                                <input
+                                    type="text"
+                                    value={userSearchQuery}
+                                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                                    placeholder="Search users by email or ID..."
+                                    className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 outline-none focus:border-blue-500 transition"
+                                />
+                                {userSearchQuery && (
+                                    <button
+                                        onClick={() => setUserSearchQuery('')}
+                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs cursor-pointer"
+                                    >
+                                        <i className="ri-close-circle-fill"></i>
+                                    </button>
+                                )}
                             </div>
+                        </div>
 
-                            <div className="flex justify-end gap-2 pt-2 border-t border-slate-900">
+                        {/* Selected State Variable Indicator Bar */}
+                        {selectedUserId.length > 0 && (
+                            <div className="py-1.5 px-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-300 flex items-center justify-between gap-2 shrink-0 my-1">
+                                <div className="flex items-center gap-1.5 truncate">
+                                    <i className="ri-checkbox-circle-fill text-blue-400 text-xs shrink-0"></i>
+                                    <span className="font-semibold shrink-0">Selected IDs:</span>
+                                    <span className="font-mono text-[10px] text-blue-200 truncate">
+                                        [{selectedUserId.map(id => `"${id.slice(-5)}..."`).join(', ')}]
+                                    </span>
+                                </div>
                                 <button
                                     type="button"
-                                    onClick={() => setIsInviteModalOpen(false)}
-                                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white"
+                                    onClick={() => setSelectedUserId([])}
+                                    className="text-[10px] text-slate-400 hover:text-red-400 font-semibold underline shrink-0 cursor-pointer"
+                                >
+                                    Clear all
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Users List Container */}
+                        <div className="flex-grow overflow-y-auto space-y-2 py-2 pr-1 min-h-[160px] max-h-64 sm:max-h-72">
+                            {fetchingUsers ? (
+                                <div className="flex flex-col items-center justify-center py-8 text-slate-400 gap-2">
+                                    <i className="ri-loader-4-line animate-spin text-2xl text-blue-400"></i>
+                                    <span className="text-xs">Loading registered users...</span>
+                                </div>
+                            ) : filteredUsersList.length === 0 ? (
+                                <div className="text-center py-8 px-4 rounded-2xl bg-slate-900/40 border border-dashed border-slate-800">
+                                    <i className="ri-user-search-line text-3xl text-slate-600 mb-2 block"></i>
+                                    <p className="text-xs font-semibold text-slate-400">
+                                        {userSearchQuery ? 'No matching users found' : 'No registered users available'}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 mt-1">
+                                        {userSearchQuery ? 'Try adjusting your search query' : 'New users will appear here once registered'}
+                                    </p>
+                                </div>
+                            ) : (
+                                filteredUsersList.map((u) => {
+                                    const isSelected = selectedUserId.includes(u._id)
+                                    const isAlreadyInProject = collaborators.some(c => (c._id || c) === u._id)
+
+                                    return (
+                                        <div
+                                            key={u._id}
+                                            onClick={() => !isAlreadyInProject && handleUserClick(u._id)}
+                                            className={`p-3 rounded-2xl border text-xs flex items-center justify-between transition-all duration-200 select-none ${
+                                                isAlreadyInProject
+                                                    ? 'bg-slate-900/40 border-slate-800/60 opacity-50 cursor-not-allowed'
+                                                    : isSelected
+                                                        ? 'bg-blue-600/20 border-blue-500 ring-1 ring-blue-500/40 text-white shadow-lg shadow-blue-500/10 cursor-pointer'
+                                                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-850 hover:border-slate-700 cursor-pointer'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className={`w-8 h-8 rounded-xl font-bold text-xs flex items-center justify-center uppercase shrink-0 shadow-md ${
+                                                    isSelected
+                                                        ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white'
+                                                        : 'bg-slate-800 text-slate-300'
+                                                }`}>
+                                                    {u.email ? u.email[0] : 'U'}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className={`font-semibold truncate ${isSelected ? 'text-white' : 'text-slate-200'}`}>
+                                                        {u.email}
+                                                    </p>
+                                                    <p className="text-[10px] text-slate-500 font-mono truncate">
+                                                        ID: {u._id}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="shrink-0 ml-2">
+                                                {isAlreadyInProject ? (
+                                                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 font-semibold border border-slate-700/60">
+                                                        Member
+                                                    </span>
+                                                ) : isSelected ? (
+                                                    <div className="flex items-center gap-1.5 text-blue-400 font-semibold text-xs">
+                                                        <span className="hidden sm:inline text-[10px]">Selected</span>
+                                                        <i className="ri-checkbox-circle-fill text-lg"></i>
+                                                    </div>
+                                                ) : (
+                                                    <i className="ri-checkbox-blank-circle-line text-slate-600 hover:text-slate-400 text-lg transition"></i>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )
+                                })
+                            )}
+                        </div>
+
+                        {/* Modal Footer / Action Buttons */}
+                        <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-slate-900 shrink-0 mt-1">
+                            <span className="text-[11px] text-slate-500 text-center sm:text-left">
+                                {selectedUserId.length > 0
+                                    ? `${selectedUserId.length} user${selectedUserId.length > 1 ? 's' : ''} selected`
+                                    : 'Select one or more users to add'}
+                            </span>
+                            <div className="flex items-center justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
-                                    type="submit"
-                                    disabled={selectedUserIds.length === 0 || addingCollaborators}
-                                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-xs font-semibold text-white disabled:opacity-40 flex items-center gap-2 cursor-pointer"
+                                    type="button"
+                                    onClick={handleAddCollaboratorsSubmit}
+                                    disabled={selectedUserId.length === 0 || addingCollaborators}
+                                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-xs font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 transition shadow-lg shadow-blue-600/20 cursor-pointer"
                                 >
                                     {addingCollaborators ? (
                                         <>
-                                            <i className="ri-loader-4-line animate-spin"></i>
+                                            <i className="ri-loader-4-line animate-spin text-sm"></i>
                                             <span>Adding...</span>
                                         </>
                                     ) : (
-                                        <span>Add Selected Members</span>
+                                        <>
+                                            <i className="ri-user-add-line text-sm"></i>
+                                            <span>Add Selected ({selectedUserId.length})</span>
+                                        </>
                                     )}
                                 </button>
                             </div>
-                        </form>
+                        </div>
                     </div>
                 </div>
             )}
