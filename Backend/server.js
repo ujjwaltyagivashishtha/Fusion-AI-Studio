@@ -28,7 +28,7 @@ const io = new Server(server, {
       if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== "production") {
         callback(null, true);
       } else {
-        callback(null, true);
+        callback(new Error(`CORS: Origin '${origin}' is not allowed`), false);
       }
     },
     methods: ["GET", "POST"],
@@ -59,9 +59,15 @@ const getUniqueRoomUsers = (roomId) => {
 // Socket Authentication & Authorization Middleware
 io.use(async (socket, next) => {
   try {
+    const cookieToken = socket.handshake.headers.cookie
+      ?.split("; ")
+      .find((row) => row.startsWith("token="))
+      ?.split("=")[1];
+
     const token =
       socket.handshake.auth?.token ||
-      socket.handshake.headers.authorization?.split(" ")[1];
+      socket.handshake.headers.authorization?.split(" ")[1] ||
+      cookieToken;
 
     const projectId = socket.handshake.query?.projectId;
 
@@ -84,6 +90,14 @@ io.use(async (socket, next) => {
     const project = await projectModel.findById(projectId);
     if (!project) {
       return next(new Error("Project not found"));
+    }
+
+    // Verify collaborator access
+    const isMember = project.users?.some(
+      (uId) => uId.toString() === decoded._id?.toString()
+    );
+    if (!isMember) {
+      return next(new Error("Access denied: You are not a collaborator on this project"));
     }
 
     socket.project = project;
