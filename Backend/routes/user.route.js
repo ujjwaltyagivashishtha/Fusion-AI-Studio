@@ -29,8 +29,9 @@ router.post(
 router.get("/profile" ,authMiddleware.authUser ,userController.profileController);
 
 
-// logout
+// logout (supports both GET and POST for maximum compatibility)
 router.get("/logout", authMiddleware.authUser, userController.logoutController);
+router.post("/logout", authMiddleware.authUser, userController.logoutController);
 // get all users
 router.get(
   "/all",
