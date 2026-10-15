@@ -1,4 +1,3 @@
-import React from 'react'
 
 export const ToastContainer = ({ toasts, onDismiss }) => {
     if (!toasts || toasts.length === 0) return null
