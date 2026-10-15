@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 const CommandPalette = ({
     isOpen,
@@ -99,19 +99,26 @@ const CommandPalette = ({
         item.group.toLowerCase().includes(query.toLowerCase())
     )
 
-    // Reset selected index when query changes
-    useEffect(() => {
-        setSelectedIndex(0)
-    }, [query])
-
     // Focus input on open
+    const prevIsOpenRef = useRef(isOpen)
     useEffect(() => {
-        if (isOpen) {
-            setQuery('')
-            setSelectedIndex(0)
-            setTimeout(() => inputRef.current?.focus(), 50)
+        if (isOpen && !prevIsOpenRef.current) {
+            const timer = setTimeout(() => inputRef.current?.focus(), 50)
+            return () => clearTimeout(timer)
         }
+        prevIsOpenRef.current = isOpen
     }, [isOpen])
+
+    const handleClose = useCallback(() => {
+        setQuery('')
+        setSelectedIndex(0)
+        onClose()
+    }, [onClose])
+
+    const handleQueryChange = (e) => {
+        setQuery(e.target.value)
+        setSelectedIndex(0)
+    }
 
     // Keyboard navigation
     useEffect(() => {
@@ -129,17 +136,17 @@ const CommandPalette = ({
                 const target = filteredActions[selectedIndex]
                 if (target) {
                     target.action()
-                    onClose()
+                    handleClose()
                 }
             } else if (e.key === 'Escape') {
                 e.preventDefault()
-                onClose()
+                handleClose()
             }
         }
 
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [isOpen, selectedIndex, filteredActions, onClose])
+    }, [isOpen, selectedIndex, filteredActions, handleClose])
 
     if (!isOpen) return null
 
@@ -147,7 +154,7 @@ const CommandPalette = ({
         <div
             className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/80 backdrop-blur-md animate-fadeIn"
             onMouseDown={(e) => {
-                if (e.target === e.currentTarget) onClose()
+                if (e.target === e.currentTarget) handleClose()
             }}
         >
             <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-950/95 shadow-2xl backdrop-blur-2xl overflow-hidden flex flex-col">
@@ -158,7 +165,7 @@ const CommandPalette = ({
                         ref={inputRef}
                         type="text"
                         value={query}
-                        onChange={(e) => setQuery(e.target.value)}
+                        onChange={handleQueryChange}
                         placeholder="Search commands, files, or ask AI..."
                         className="w-full bg-transparent text-sm text-white placeholder-slate-500 outline-none"
                     />
