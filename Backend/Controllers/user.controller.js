@@ -1,7 +1,7 @@
 import userModel from "../models/user.model.js";
 import * as userService from "../services/user.service.js";
 import { validationResult } from "express-validator";
-import redisClient from "../services/redis.service.js";
+import redisClient, { blacklistToken } from "../services/redis.service.js";
 
 
 
@@ -114,11 +114,13 @@ export const profileController = async (req, res) => {
 
 export const logoutController = async (req, res) => {
   try {
-
     const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
 
-    redisClient.set(token, "logout", "EX", 60 * 60 * 24);
+    if (token) {
+      await blacklistToken(token, 60 * 60 * 24);
+    }
 
+    res.cookie("token", "");
     res.status(200).json({
       success: true,
       message: "Logout successfully"
