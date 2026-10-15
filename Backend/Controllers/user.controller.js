@@ -3,8 +3,6 @@ import * as userService from "../services/user.service.js";
 import { validationResult } from "express-validator";
 import redisClient, { blacklistToken } from "../services/redis.service.js";
 
-
-
 // register user controller
 export const registerUserController = async (req, res) => {
   const errors = validationResult(req);
@@ -22,21 +20,22 @@ export const registerUserController = async (req, res) => {
 
       const token = await user.generateToken();
 
-      delete user?._doc.password;
+      const userObj = user.toObject ? user.toObject() : { ...user._doc };
+      delete userObj.password;
 
-      res.status(200).json({
-        user,
+      res.status(201).json({
+        success: true,
+        user: userObj,
         token
-      })
-    }  catch(error){
+      });
+    } catch(error){
       console.log("Error during registration: ", error);
       res.status(500).json({
         success: false,
         message: error.message
-      })
+      });
     }
-}
-
+};
 
 // login controller
 export const loginUserController = async (req, res) => {
@@ -47,7 +46,7 @@ export const loginUserController = async (req, res) => {
       errors: errors.array(),
       success: false,
       message: "Validation failed"
-    })
+    });
   }
 
   try{
@@ -59,7 +58,7 @@ export const loginUserController = async (req, res) => {
       return res.status(401).json({
         success:false,
         message: "Invalid credentials"
-      })
+      });
     }
 
     const isMatched = await user.comparePassword(password);
@@ -68,18 +67,19 @@ export const loginUserController = async (req, res) => {
       return res.status(401).json({
         success: false,
         message: "Invalid credentials"
-      })
+      });
     } 
 
     const token = await user.generateToken();
 
-    delete user?._doc.password;
+    const userObj = user.toObject ? user.toObject() : { ...user._doc };
+    delete userObj.password;
 
     res.status(200).json({
       success: true,
-      user,
+      user: userObj,
       token,
-    })
+    });
     
   } 
   catch(error){
@@ -87,31 +87,33 @@ export const loginUserController = async (req, res) => {
     res.status(500).json({
         success: false,
         message: error.message
-      })
+    });
   }
-
-
-}
-
+};
 
 // profile controller
 export const profileController = async (req, res) => {
   try {
-    console.log(req.user);
-    
+    const user = await userModel.findById(req.user._id).select("-password");
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
     res.status(200).json({
-      user: req.user
-    })
+      success: true,
+      user
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: error.message
-    })
+    });
   }
-}
+};
 
 // logout controller
-
 export const logoutController = async (req, res) => {
   try {
     const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
@@ -131,17 +133,29 @@ export const logoutController = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message
-    })
+    });
   }
-}
+};
 
-// 
+// get all users controller
 export const getAllUsersController = async(req, res) => {
   try {
-    const loggedInUser = await userModel.findOne({ email: req.user.email });
+    const userId = req.user?._id;
+    let loggedInUser = null;
+    if (!userId && req.user?.email) {
+      loggedInUser = await userModel.findOne({ email: req.user.email });
+    }
+    const targetUserId = userId || loggedInUser?._id;
+
+    if (!targetUserId) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
 
     const allUsers = await userService.getAllUser({
-      userId: loggedInUser._id
+      userId: targetUserId
     });
 
     return res.status(200).json({
@@ -154,6 +168,6 @@ export const getAllUsersController = async(req, res) => {
     res.status(500).json({
       success: false,
       message: error.message
-    })
+    });
   }
-}     
+};
