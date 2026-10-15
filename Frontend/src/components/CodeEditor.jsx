@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 
 const CodeEditor = ({
     value,
@@ -7,9 +7,8 @@ const CodeEditor = ({
     onCopy,
     collaborators = [],
     isDiffMode = false,
-    diffContent = '',
-    onAcceptDiff,
-    onRejectDiff
+    onAcceptDiff = () => {},
+    onRejectDiff = () => {}
 }) => {
     const textareaRef = useRef(null)
     const lineNumbersRef = useRef(null)
@@ -20,7 +19,6 @@ const CodeEditor = ({
     const [copied, setCopied] = useState(false)
     const [isSearchOpen, setIsSearchOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
-    const [searchResults, setSearchResults] = useState([])
     const [currentSearchIndex, setCurrentSearchIndex] = useState(0)
     const [wordWrap, setWordWrap] = useState(true)
     const [fontSize, setFontSize] = useState(13) // px
@@ -52,7 +50,7 @@ const CodeEditor = ({
     }
 
     // Calculate cursor position (line, col)
-    const updateCursorPosition = () => {
+    const updateCursorPosition = useCallback(() => {
         if (!textareaRef.current) return
         const selStart = textareaRef.current.selectionStart
         const textBefore = (value || '').substring(0, selStart)
@@ -60,15 +58,11 @@ const CodeEditor = ({
         const line = currentLines.length
         const col = currentLines[currentLines.length - 1].length + 1
         setCursorPos({ line, col })
-    }
+    }, [value])
 
-    // In-editor Search functionality
-    useEffect(() => {
-        if (!searchQuery.trim() || !value) {
-            setSearchResults([])
-            setCurrentSearchIndex(0)
-            return
-        }
+    // In-editor Search functionality computed derived state
+    const searchResults = useMemo(() => {
+        if (!searchQuery.trim() || !value) return []
         const query = searchQuery.toLowerCase()
         const text = value.toLowerCase()
         const indices = []
@@ -77,8 +71,7 @@ const CodeEditor = ({
             indices.push(startIndex)
             startIndex += query.length
         }
-        setSearchResults(indices)
-        setCurrentSearchIndex(indices.length > 0 ? 0 : -1)
+        return indices
     }, [searchQuery, value])
 
     const handleNextSearch = () => {
@@ -232,7 +225,7 @@ const CodeEditor = ({
 
     useEffect(() => {
         updateCursorPosition()
-    }, [value])
+    }, [value, updateCursorPosition])
 
     return (
         <div className="flex-grow flex flex-col min-w-0 bg-[#0B0F19] overflow-hidden select-text relative border-r border-white/5">
