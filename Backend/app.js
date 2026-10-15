@@ -32,7 +32,7 @@ app.use(
       if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== "production") {
         callback(null, true);
       } else {
-        callback(null, true); // Dev-friendly fallback
+        callback(new Error(`CORS: Origin '${origin}' is not allowed`), false);
       }
     },
     credentials: true,
@@ -50,6 +50,11 @@ app.use(cookieParser());
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/projects", projectRoutes);
 app.use("/api/v1/ai", aiRoutes);
+
+// Compatibility Routes (without /api/v1 prefix)
+app.use("/users", userRoutes);
+app.use("/projects", projectRoutes);
+app.use("/ai", aiRoutes);
 
 // Health check endpoint
 const getHealthStatus = () => ({
