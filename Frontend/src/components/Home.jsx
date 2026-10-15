@@ -179,7 +179,7 @@ const Home = () => {
     // Logout Handler
     const handleLogout = async () => {
         try {
-            await axios.get('/users/logout')
+            await axios.post('/users/logout').catch(() => axios.get('/users/logout'))
         } catch (err) {
             console.error('Logout error:', err)
         } finally {
