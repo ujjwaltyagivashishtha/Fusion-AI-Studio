@@ -33,7 +33,7 @@ userSchema.methods.comparePassword = async function(password){
 // Generate jwt token
 userSchema.methods.generateToken = async function(){
   return jwt.sign(
-    { email: this.email }, 
+    { email: this.email, _id: this._id }, 
     process.env.JWT_SECRET,
     { expiresIn: "24h"})
 }
