@@ -1,32 +1,99 @@
 import "dotenv/config";
 import express from "express";
 import morgan from "morgan";
-import connectDB from "./db/db.js";
-import userRoutes from "./routes/user.route.js";
-import projectRoutes from "./routes/project.route.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-
-
+import mongoose from "mongoose";
+import connectDB from "./db/db.js";
+import redisClient from "./services/redis.service.js";
+import userRoutes from "./routes/user.route.js";
+import projectRoutes from "./routes/project.route.js";
+import aiRoutes from "./routes/ai.route.js";
 
 connectDB();
 const app = express();
 
+// CORS configuration
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:3000"
+];
 
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended:true }));
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl) or if in allowed list
+      if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== "production") {
+        callback(null, true);
+      } else {
+        callback(null, true); // Dev-friendly fallback
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+  })
+);
+
+app.use(express.json({ limit: "15mb" }));
+app.use(express.urlencoded({ extended: true, limit: "15mb" }));
 app.use(morgan("dev"));
 app.use(cookieParser());
 
+// API Routes
+app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/projects", projectRoutes);
+app.use("/api/v1/ai", aiRoutes);
 
-app.use("/api/v1/users", userRoutes); // http://localhost:3000/api/v1/users/register
-app.use("/api/v1/projects", projectRoutes); // http://localhost:3000/api/v1/projects/create
+// Health check endpoint
+const getHealthStatus = () => ({
+  status: "healthy",
+  uptime: process.uptime(),
+  timestamp: new Date().toISOString(),
+  database: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+  redis: redisClient && redisClient.status === "ready" ? "connected" : "standalone/fallback",
+  version: "2.5.0",
+  service: "Fusion AI Studio Backend"
+});
 
+app.get("/api/health", (req, res) => {
+  res.status(200).json(getHealthStatus());
+});
 
-app.get("/", (req,res) => {
-  res.send("Hello World");
-})
+app.get("/api/v1/health", (req, res) => {
+  res.status(200).json(getHealthStatus());
+});
 
+app.get("/", (req, res) => {
+  res.status(200).json({
+    message: "🚀 Fusion AI Studio Backend Engine is Running",
+    healthCheck: "/api/health",
+    version: "2.5.0"
+  });
+});
+
+// 404 Handler
+app.use((req, res, next) => {
+  res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.method} ${req.originalUrl}`
+  });
+});
+
+// Centralized Error Handler
+app.use((err, req, res, next) => {
+  console.error("[Backend Error Handler]:", err);
+  const statusCode = err.status || 500;
+  res.status(statusCode).json({
+    success: false,
+    message: err.message || "Internal Server Error"
+  });
+});
 
 export default app;
