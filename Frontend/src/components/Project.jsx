@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useRef, useMemo } from 'react'
+import { useState, useEffect, useContext, useRef, useMemo, useCallback } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import axios from '../config/axios'
 import { UserContext } from '../context/user.context'
@@ -199,10 +199,10 @@ const Project = () => {
 
     // Toast Notifications
     const [toasts, setToasts] = useState([])
-    const addToast = (message, type = 'info') => {
+    const addToast = useCallback((message, type = 'info') => {
         const id = Date.now() + Math.random()
         setToasts((prev) => [...prev, { id, message, type }])
-    }
+    }, [])
     const dismissToast = (id) => {
         setToasts((prev) => prev.filter((t) => t.id !== id))
     }
@@ -218,7 +218,7 @@ const Project = () => {
     }, [terminalHistory])
 
     // Save files helper with debouncing
-    const saveFilesToBackend = async (filesToSave) => {
+    const saveFilesToBackend = useCallback(async (filesToSave) => {
         if (!targetProjectId) return
         try {
             setSaveStatus('saving')
@@ -228,7 +228,22 @@ const Project = () => {
             console.error('Failed to save workspace files:', err)
             setSaveStatus('unsaved')
         }
-    }
+    }, [targetProjectId])
+
+    // Run Code & Rebuild Preview
+    const handleRunCode = useCallback(() => {
+        setPreviewKey((prev) => prev + 1)
+        if (!isSplitPreview) {
+            setBottomTab('preview')
+        }
+        setTerminalHistory((prev) => [
+            ...prev,
+            `$ npm run build`,
+            `> vite build --mode development`,
+            `✓ Compiled in 12ms. Web container active and executing.`
+        ])
+        addToast('Live container preview refreshed!', 'success')
+    }, [isSplitPreview, addToast])
 
     // Keyboard Shortcuts (Cmd+K for Command Palette, Cmd+S for Cloud Save)
     useEffect(() => {
@@ -249,7 +264,7 @@ const Project = () => {
         }
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [files, targetProjectId])
+    }, [files, saveFilesToBackend, addToast, handleRunCode])
 
     // Sync project details & load persisted files from Backend API
     useEffect(() => {
@@ -274,9 +289,7 @@ const Project = () => {
                 if (res.data?.files && Object.keys(res.data.files).length > 0) {
                     setFiles(res.data.files)
                     const keys = Object.keys(res.data.files)
-                    if (!keys.includes(activeFile)) {
-                        setActiveFile(keys[0] || 'app.js')
-                    }
+                    setActiveFile((prevActive) => (!keys.includes(prevActive) ? (keys[0] || 'app.js') : prevActive))
                     setOpenFiles((prev) => {
                         const valid = prev.filter((f) => keys.includes(f))
                         return valid.length > 0 ? valid : [keys[0] || 'app.js']
@@ -410,7 +423,7 @@ const Project = () => {
             removeListener('disconnect', handleDisconnect)
             disconnectSocket()
         }
-    }, [targetProjectId, user?._id, user?.email])
+    }, [targetProjectId, user?._id, user?.email, addToast])
 
     // Capture console output messages from the preview iframe
     useEffect(() => {
@@ -623,20 +636,7 @@ const Project = () => {
         })
     }
 
-    // Run Code & Rebuild Preview
-    const handleRunCode = () => {
-        setPreviewKey((prev) => prev + 1)
-        if (!isSplitPreview) {
-            setBottomTab('preview')
-        }
-        setTerminalHistory((prev) => [
-            ...prev,
-            `$ npm run build`,
-            `> vite build --mode development`,
-            `✓ Compiled in 12ms. Web container active and executing.`
-        ])
-        addToast('Live container preview refreshed!', 'success')
-    }
+
 
     // Interactive Terminal Command Execution
     const handleTerminalCommand = async (e) => {
@@ -903,7 +903,7 @@ const Project = () => {
               window.parent.postMessage({ type: 'PREVIEW_CONSOLE', level: 'error', message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ') }, '*');
             };
           })();
-        <\/script>`
+        </script>`
 
         if (doc.includes('<head>')) {
             doc = doc.replace('<head>', `<head>${captureScript}`)
@@ -912,11 +912,11 @@ const Project = () => {
         }
 
         if (js) {
-            doc += `<script>${js}<\/script>`
+            doc += `<script>${js}</script>`
         }
 
         return doc
-    }, [files, previewKey])
+    }, [files])
 
     return (
         <div className="h-screen w-screen bg-[#070A11] text-white flex flex-col overflow-hidden font-sans select-none">
