@@ -6,7 +6,7 @@ export const UserContext = createContext(null);
 
 export const UserProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(() => Boolean(localStorage.getItem('token')));
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -20,8 +20,6 @@ export const UserProvider = ({ children }) => {
                     localStorage.removeItem('token');
                 })
                 .finally(() => setLoading(false));
-        } else {
-            setLoading(false);
         }
     }, []);
 
