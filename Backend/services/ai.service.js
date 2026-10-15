@@ -189,6 +189,6 @@ If suggesting changes for a specific file, mention the file name and output clea
 export const generateResult = async (prompt, resultCode, response) => {
   const result = await model.generateContent(`${prompt}\n\n\n ${resultCode}`);
 
-  return
+  return result;
 }
   
