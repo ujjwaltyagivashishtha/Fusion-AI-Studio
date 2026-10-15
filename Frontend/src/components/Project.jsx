@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useRef } from 'react'
+import { useState, useEffect, useContext, useRef, useMemo } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import axios from '../config/axios'
 import { UserContext } from '../context/user.context'
@@ -8,9 +8,10 @@ import ToastContainer from './Toast.jsx'
 import { intializeSocket, recieveMessage, sendMessage, disconnectSocket, removeListener } from '../config/socket.js'
 
 const INITIAL_FILES = {
-  'app.js': `// Fusion AI Studio - Main Application Server
+  'app.js': `// Fusion AI Studio - Express Application Server
 import express from 'express';
 const app = express();
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
@@ -27,8 +28,8 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, memory: "142MB", latency: "1.2ms" });
 });
 
-app.listen(3000, () => {
-  console.log("🚀 Server running smoothly on port 3000");
+app.listen(PORT, () => {
+  console.log(\`🚀 Server running smoothly on port \${PORT}\`);
 });`,
   'index.html': `<!DOCTYPE html>
 <html lang="en">
@@ -36,51 +37,7 @@ app.listen(3000, () => {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fusion AI Web Preview</title>
-  <style>
-    body { 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-      background: #080C14; 
-      color: #F8FAFC; 
-      padding: 2.5rem; 
-      margin: 0;
-    }
-    .card { 
-      background: rgba(30, 41, 59, 0.45); 
-      padding: 2rem; 
-      border-radius: 1.25rem; 
-      border: 1px solid rgba(255, 255, 255, 0.08); 
-      backdrop-filter: blur(16px);
-      box-shadow: 0 20px 40px -15px rgba(0,0,0,0.6);
-    }
-    h1 { 
-      color: #60A5FA; 
-      margin-top: 0; 
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-    .badge {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      background: rgba(16, 185, 129, 0.15);
-      color: #34D399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-    .btn {
-      margin-top: 1.5rem;
-      padding: 0.75rem 1.5rem;
-      border-radius: 0.75rem;
-      background: linear-gradient(135deg, #2563EB, #4F46E5);
-      color: white;
-      border: none;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.4);
-    }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="card">
@@ -91,7 +48,7 @@ app.listen(3000, () => {
     <p style="color: #94A3B8; line-height: 1.6;">
       Your full-stack application preview is executing and live-rendering inside our isolated cloud environment.
     </p>
-    <button class="btn" onclick="alert('Container response OK!')">Test Cloud Interaction</button>
+    <button class="btn" onclick="alert('Container interaction verified! All cloud systems normal.')">Test Cloud Interaction</button>
   </div>
 </body>
 </html>`,
@@ -101,11 +58,52 @@ app.listen(3000, () => {
   --bg-dark: #080c14;
 }
 
-body {
+body { 
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+  background: #080C14; 
+  color: #F8FAFC; 
+  padding: 2.5rem; 
   margin: 0;
-  background-color: var(--bg-dark);
-  font-family: 'Outfit', sans-serif;
-  color: #f8fafc;
+}
+.card { 
+  background: rgba(30, 41, 59, 0.45); 
+  padding: 2rem; 
+  border-radius: 1.25rem; 
+  border: 1px solid rgba(255, 255, 255, 0.08); 
+  backdrop-filter: blur(16px);
+  box-shadow: 0 20px 40px -15px rgba(0,0,0,0.6);
+  max-width: 600px;
+  margin: 0 auto;
+}
+h1 { 
+  color: #60A5FA; 
+  margin-top: 0; 
+  font-size: 1.5rem;
+}
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34D399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.btn {
+  margin-top: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, #2563EB, #4F46E5);
+  color: white;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.4);
+  transition: transform 0.15s ease;
+}
+.btn:hover {
+  transform: translateY(-2px);
 }`,
   'package.json': `{
   "name": "fusion-ai-app",
@@ -113,10 +111,11 @@ body {
   "type": "module",
   "scripts": {
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "test": "vitest run"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.19.2"
   }
 }`
 }
@@ -128,18 +127,23 @@ const Project = () => {
     const { user } = useContext(UserContext)
 
     // Project state & active project ID resolution
-    const initialProject = location.state?.project || { name: 'Demo Workspace', users: [user?.email || 'User'] }
+    const initialProject = location.state?.project || { name: 'Cloud Workspace', users: [user?.email || 'User'] }
     const [project, setProject] = useState(initialProject)
     const targetProjectId = routeProjectId || location.state?.project?._id || project._id
 
-    // Socket Connection State
+    // Socket Connection & Presence State
     const [socketConnected, setSocketConnected] = useState(false)
+    const [onlineUsers, setOnlineUsers] = useState([])
+
+    // Cloud Save status: 'saved' | 'saving' | 'unsaved'
+    const [saveStatus, setSaveStatus] = useState('saved')
+    const saveTimeoutRef = useRef(null)
 
     // Layout Panes & Activity Bar State
     const [activeActivityTab, setActiveActivityTab] = useState('explorer') // 'explorer' | 'search' | 'git' | 'copilot'
     const [isSidebarOpen, setIsSidebarOpen] = useState(true)
     const [sidebarWidth, setSidebarWidth] = useState(240)
-    const [rightPanelWidth, setRightPanelWidth] = useState(320)
+    const [rightPanelWidth, setRightPanelWidth] = useState(340)
     const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
     const [rightPanelTab, setRightPanelTab] = useState('copilot') // 'copilot' | 'chat'
 
@@ -148,163 +152,247 @@ const Project = () => {
     const [openFiles, setOpenFiles] = useState(['app.js', 'index.html'])
     const [activeFile, setActiveFile] = useState('app.js')
     const [fileFilter, setFileFilter] = useState('')
-    const [newFileName, setNewFileName] = useState('')
     const [isCreatingFile, setIsCreatingFile] = useState(false)
+    const [newFileName, setNewFileName] = useState('')
 
-    // AI Assistant State
-    const [aiMode, setAiMode] = useState('coder') // 'coder' | 'architect' | 'reviewer'
-    const [aiMessages, setAiMessages] = useState([
-        {
-            sender: 'ai',
-            text: `Hello ${user?.email ? user.email.split('@')[0] : 'Developer'}! I'm your Fusion AI Partner for **${project.name}**.\n\nI can generate code, refactor functions, or write unit tests. What would you like to build?`
-        }
-    ])
-    const [prompt, setPrompt] = useState('')
-    const [aiLoading, setAiLoading] = useState(false)
-
-    // Bottom Drawer State
-    const [bottomDrawerHeight, setBottomDrawerHeight] = useState(200)
-    const [bottomTab, setBottomTab] = useState('terminal') // 'terminal' | 'preview' | 'problems' | 'hidden'
-    const [terminalInput, setTerminalInput] = useState('')
-    const [terminalHistory, setTerminalHistory] = useState([
-        `Fusion AI Cloud Terminal (Node v20.10.0, npm v10.2.3)`,
-        `Type "help" for a list of available workspace commands.`,
-        `[SYSTEM] Connected to workspace container for "${project.name}".`
-    ])
+    // Editor View Settings
     const [isSplitPreview, setIsSplitPreview] = useState(false)
     const [previewViewport, setPreviewViewport] = useState('desktop') // 'desktop' | 'tablet' | 'mobile'
     const [previewKey, setPreviewKey] = useState(0)
 
-    // Command Palette & Modals State
-    const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
-    const [isModalOpen, setIsModalOpen] = useState(false)
-    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
-
-    // Users & Collaborators State
-    const [users, setUsers] = useState([])
-    const [selectedUserId, setSelectedUserId] = useState([])
-    const [userSearchQuery, setUserSearchQuery] = useState('')
-    const [fetchingUsers, setFetchingUsers] = useState(false)
-    const [collaborators, setCollaborators] = useState(project.users || [])
-    const [addingCollaborators, setAddingCollaborators] = useState(false)
-
-    // Reactive Toasts State
-    const [toasts, setToasts] = useState([])
-
-    // Drag Resizer Refs
-    const isDraggingSidebar = useRef(false)
-    const isDraggingRightPanel = useRef(false)
-    const isDraggingBottomDrawer = useRef(false)
+    // Bottom Drawer State (Terminal, Web Preview, Console)
+    const [bottomTab, setBottomTab] = useState('terminal') // 'terminal' | 'preview' | 'console' | 'hidden'
+    const [bottomDrawerHeight, setBottomDrawerHeight] = useState(220)
+    const [terminalHistory, setTerminalHistory] = useState([
+        'Fusion AI Cloud Terminal (Node v20.10.0, Linux x86_64)',
+        'Type "help" for available commands, or "npm start" to run server.'
+    ])
+    const [terminalInput, setTerminalInput] = useState('')
+    const [consoleLogs, setConsoleLogs] = useState([])
     const terminalEndRef = useRef(null)
 
-    const addToast = (message, type = 'success') => {
-        const id = Date.now() + Math.random().toString(36).substring(2, 9)
-        setToasts((prev) => [...prev, { id, message, type }])
-        setTimeout(() => {
-            setToasts((prev) => prev.filter((t) => t.id !== id))
-        }, 3200)
-    }
+    // AI Copilot & Collaborator Chat State
+    const [prompt, setPrompt] = useState('')
+    const [aiMode, setAiMode] = useState('copilot') // 'copilot' | 'refactor' | 'debug' | 'test' | 'explain'
+    const [aiLoading, setAiLoading] = useState(false)
+    const [aiMessages, setAiMessages] = useState([
+        {
+            sender: 'ai',
+            text: `👋 **Fusion AI Copilot** is online!\n\nI have indexed your workspace. Choose a mode (**Copilot**, **Refactor**, **Debug**, or **Unit Tests**) or click one of the quick action chips below.`
+        }
+    ])
 
+    // Collaborators & Modals
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
+    const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
+    const [newProjectNameInput, setNewProjectNameInput] = useState('')
+    const [selectedUserId, setSelectedUserId] = useState([])
+    const [users, setUsers] = useState([])
+    const [collaborators, setCollaborators] = useState([])
+    const [userSearchQuery, setUserSearchQuery] = useState('')
+    const [fetchingUsers, setFetchingUsers] = useState(false)
+    const [submittingUsers, setSubmittingUsers] = useState(false)
+
+    // Command Palette
+    const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
+
+    // Toast Notifications
+    const [toasts, setToasts] = useState([])
+    const addToast = (message, type = 'info') => {
+        const id = Date.now() + Math.random()
+        setToasts((prev) => [...prev, { id, message, type }])
+    }
     const dismissToast = (id) => {
         setToasts((prev) => prev.filter((t) => t.id !== id))
     }
 
-    // Hotkey handler (Cmd+K / Ctrl+K, Ctrl+Enter)
+    // Drag Resizing References
+    const isDraggingSidebar = useRef(false)
+    const isDraggingRightPanel = useRef(false)
+    const isDraggingBottomDrawer = useRef(false)
+
+    // Scroll terminal to bottom
+    useEffect(() => {
+        terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, [terminalHistory])
+
+    // Save files helper with debouncing
+    const saveFilesToBackend = async (filesToSave) => {
+        if (!targetProjectId) return
+        try {
+            setSaveStatus('saving')
+            await axios.put(`/projects/${targetProjectId}/files`, { files: filesToSave })
+            setSaveStatus('saved')
+        } catch (err) {
+            console.error('Failed to save workspace files:', err)
+            setSaveStatus('unsaved')
+        }
+    }
+
+    // Keyboard Shortcuts (Cmd+K for Command Palette, Cmd+S for Cloud Save)
     useEffect(() => {
         const handleKeyDown = (e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                 e.preventDefault()
                 setIsCommandPaletteOpen((prev) => !prev)
-            } else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            }
+            if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+                e.preventDefault()
+                saveFilesToBackend(files)
+                addToast('All workspace files saved to cloud!', 'success')
+            }
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                 e.preventDefault()
                 handleRunCode()
             }
         }
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [])
+    }, [files, targetProjectId])
 
-    // Sync project details & preload users from Backend API
+    // Sync project details & load persisted files from Backend API
     useEffect(() => {
-        if (targetProjectId) {
-            axios.get(`/projects/get-project/${targetProjectId}`)
-                .then((res) => {
-                    if (res.data.project) {
-                        setProject(res.data.project)
-                        setCollaborators(res.data.project.users || [])
-                    }
-                })
-                .catch((err) => {
-                    console.error('Error fetching project details:', err)
-                })
-        }
+        if (!targetProjectId) return
 
+        // 1. Fetch Project Details
+        axios.get(`/projects/get-project/${targetProjectId}`)
+            .then((res) => {
+                if (res.data.project) {
+                    setProject(res.data.project)
+                    setCollaborators(res.data.project.users || [])
+                    setNewProjectNameInput(res.data.project.name || '')
+                }
+            })
+            .catch((err) => {
+                console.error('Error fetching project details:', err)
+            })
+
+        // 2. Fetch Saved Files from MongoDB
+        axios.get(`/projects/${targetProjectId}/files`)
+            .then((res) => {
+                if (res.data?.files && Object.keys(res.data.files).length > 0) {
+                    setFiles(res.data.files)
+                    const keys = Object.keys(res.data.files)
+                    if (!keys.includes(activeFile)) {
+                        setActiveFile(keys[0] || 'app.js')
+                    }
+                    setOpenFiles((prev) => {
+                        const valid = prev.filter((f) => keys.includes(f))
+                        return valid.length > 0 ? valid : [keys[0] || 'app.js']
+                    })
+                    setSaveStatus('saved')
+                }
+            })
+            .catch((err) => {
+                console.warn('Could not load backend files, using default template:', err.message)
+            })
+
+        // 3. Preload registered users list
         axios.get('/users/all')
             .then((res) => {
                 setUsers(res.data.users || [])
             })
             .catch((err) => {
-                console.error('Error fetching users:', err)
+                console.error('Error fetching registered users:', err)
             })
     }, [targetProjectId])
 
-    // Initialize Real-time Socket Connection for this project
+    // Real-time Socket.IO Connection & Events Pipeline
     useEffect(() => {
         if (!targetProjectId) return
 
         const socket = intializeSocket(targetProjectId)
 
+        // 1. Project Chat Message
         const handleProjectMessage = (data) => {
-            console.log('Received socket message:', data)
             const senderId = data.sender?._id || data.sender
             const isSelf = senderId === user?._id || data.sender?.email === user?.email
+            if (isSelf) return
 
-            if (isSelf) return // Ignore echo of own message
+            const senderName = typeof data.sender === 'object'
+                ? data.sender.email?.split('@')[0] || 'Collaborator'
+                : String(data.sender).split('@')[0]
 
-            if (data.sender) {
-                const senderName = typeof data.sender === 'object'
-                    ? data.sender.email?.split('@')[0] || 'Collaborator'
-                    : String(data.sender).split('@')[0]
+            setAiMessages((prev) => [
+                ...prev,
+                {
+                    sender: 'collaborator',
+                    senderName,
+                    text: data.message
+                }
+            ])
+            addToast(`Message from ${senderName}`, 'info')
+        }
 
-                setAiMessages((prev) => [
-                    ...prev,
-                    {
-                        sender: 'collaborator',
-                        senderName,
-                        text: data.message
-                    }
-                ])
-                addToast(`New message from ${senderName}`, 'info')
-            } else {
-                setAiMessages((prev) => [
-                    ...prev,
-                    {
-                        sender: 'ai',
-                        text: data.message
-                    }
-                ])
+        // 2. Real-time Room Users Presence
+        const handleRoomUsers = (data) => {
+            if (data?.users) {
+                setOnlineUsers(data.users)
             }
+        }
+
+        // 3. User Joined / Left Notifications
+        const handleUserJoined = (data) => {
+            addToast(`${data.name || 'Collaborator'} entered the workspace`, 'info')
+            setTerminalHistory((prev) => [...prev, `[COLLAB] ${data.email || 'User'} connected`])
+        }
+
+        const handleUserLeft = (data) => {
+            addToast(`${data.name || 'Collaborator'} left workspace`, 'info')
+            setTerminalHistory((prev) => [...prev, `[COLLAB] ${data.email || 'User'} disconnected`])
+        }
+
+        // 4. Real-time File Sync
+        const handleRemoteFileChange = (data) => {
+            if (!data?.fileName) return
+            setFiles((prev) => ({
+                ...prev,
+                [data.fileName]: data.content
+            }))
+            setTerminalHistory((prev) => [...prev, `[SYNC] ${data.fileName} updated by ${data.sender?.email || 'collaborator'}`])
+        }
+
+        const handleRemoteFileCreate = (data) => {
+            if (!data?.fileName) return
+            setFiles((prev) => ({
+                ...prev,
+                [data.fileName]: data.content || ''
+            }))
+            setOpenFiles((prev) => (prev.includes(data.fileName) ? prev : [...prev, data.fileName]))
+            addToast(`Collaborator created: ${data.fileName}`, 'info')
+        }
+
+        const handleRemoteFileDelete = (data) => {
+            if (!data?.fileName) return
+            setFiles((prev) => {
+                const next = { ...prev }
+                delete next[data.fileName]
+                return next
+            })
+            setOpenFiles((prev) => prev.filter((f) => f !== data.fileName))
+            addToast(`Collaborator deleted: ${data.fileName}`, 'info')
         }
 
         const handleConnect = () => {
             setSocketConnected(true)
-            setTerminalHistory((prev) => [...prev, `[SOCKET] Real-time collaboration connected to room: ${targetProjectId}`])
+            setTerminalHistory((prev) => [...prev, `[SOCKET] Connected to workspace channel: ${targetProjectId}`])
         }
 
         const handleDisconnect = () => {
             setSocketConnected(false)
-            setTerminalHistory((prev) => [...prev, `[SOCKET] Disconnected from workspace channel`])
-        }
-
-        const handleConnectError = (err) => {
-            setSocketConnected(false)
-            console.error('Socket connection error:', err?.message)
+            setTerminalHistory((prev) => [...prev, `[SOCKET] Disconnected from workspace`])
         }
 
         recieveMessage('project-message', handleProjectMessage)
+        recieveMessage('room-users', handleRoomUsers)
+        recieveMessage('user-joined', handleUserJoined)
+        recieveMessage('user-left', handleUserLeft)
+        recieveMessage('file-change', handleRemoteFileChange)
+        recieveMessage('file-create', handleRemoteFileCreate)
+        recieveMessage('file-delete', handleRemoteFileDelete)
         recieveMessage('connect', handleConnect)
         recieveMessage('disconnect', handleDisconnect)
-        recieveMessage('connect_error', handleConnectError)
 
         if (socket?.connected) {
             setSocketConnected(true)
@@ -312,24 +400,53 @@ const Project = () => {
 
         return () => {
             removeListener('project-message', handleProjectMessage)
+            removeListener('room-users', handleRoomUsers)
+            removeListener('user-joined', handleUserJoined)
+            removeListener('user-left', handleUserLeft)
+            removeListener('file-change', handleRemoteFileChange)
+            removeListener('file-create', handleRemoteFileCreate)
+            removeListener('file-delete', handleRemoteFileDelete)
             removeListener('connect', handleConnect)
             removeListener('disconnect', handleDisconnect)
-            removeListener('connect_error', handleConnectError)
             disconnectSocket()
         }
     }, [targetProjectId, user?._id, user?.email])
 
-    // Drag Resizer Handlers
+    // Capture console output messages from the preview iframe
+    useEffect(() => {
+        const handleFrameMessage = (e) => {
+            if (e.data?.type === 'PREVIEW_CONSOLE') {
+                const timestamp = new Date().toLocaleTimeString()
+                setConsoleLogs((prev) => [
+                    ...prev.slice(-99),
+                    {
+                        level: e.data.level || 'log',
+                        message: e.data.message || '',
+                        time: timestamp
+                    }
+                ])
+                if (e.data.level === 'error') {
+                    setTerminalHistory((prev) => [...prev, `[PREVIEW-ERROR] ${e.data.message}`])
+                }
+            }
+        }
+        window.addEventListener('message', handleFrameMessage)
+        return () => window.removeEventListener('message', handleFrameMessage)
+    }, [])
+
+    // Global Mouse Handlers for Resizing
     useEffect(() => {
         const handleMouseMove = (e) => {
             if (isDraggingSidebar.current) {
-                const newWidth = Math.min(Math.max(160, e.clientX - 48), 440)
+                const newWidth = Math.max(160, Math.min(e.clientX - 48, 480))
                 setSidebarWidth(newWidth)
-            } else if (isDraggingRightPanel.current) {
-                const newWidth = Math.min(Math.max(240, window.innerWidth - e.clientX), 550)
+            }
+            if (isDraggingRightPanel.current) {
+                const newWidth = Math.max(260, Math.min(window.innerWidth - e.clientX, 600))
                 setRightPanelWidth(newWidth)
-            } else if (isDraggingBottomDrawer.current) {
-                const newHeight = Math.min(Math.max(100, window.innerHeight - e.clientY - 26), 500)
+            }
+            if (isDraggingBottomDrawer.current) {
+                const newHeight = Math.max(120, Math.min(window.innerHeight - e.clientY, 500))
                 setBottomDrawerHeight(newHeight)
             }
         }
@@ -349,81 +466,74 @@ const Project = () => {
         }
     }, [])
 
-    // Auto-scroll terminal on new output
-    useEffect(() => {
-        if (terminalEndRef.current) {
-            terminalEndRef.current.scrollIntoView({ behavior: 'smooth' })
-        }
-    }, [terminalHistory])
-
-    // Auto-fetch users when modal opens
-    const fetchUsers = () => {
+    // Invite Modal Helpers
+    const handleOpenInviteModal = () => {
+        setSelectedUserId([])
+        setIsModalOpen(true)
         setFetchingUsers(true)
         axios.get('/users/all')
-            .then((res) => {
-                setUsers(res.data.users || [])
-            })
-            .catch((err) => {
-                console.error('Error fetching users:', err)
-            })
-            .finally(() => {
-                setFetchingUsers(false)
-            })
+            .then((res) => setUsers(res.data.users || []))
+            .catch((err) => console.error(err))
+            .finally(() => setFetchingUsers(false))
     }
 
-    const handleOpenInviteModal = () => {
-        setIsModalOpen(true)
-        fetchUsers()
-    }
-
-    // Select or toggle user ID in state variable when user tile is clicked
     const handleUserClick = (id) => {
-        setSelectedUserId((prev) => {
-            if (prev.includes(id)) {
-                return prev.filter((uId) => uId !== id)
-            } else {
-                return [...prev, id]
-            }
-        })
+        setSelectedUserId((prev) =>
+            prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+        )
     }
 
-    // Filter users list based on search query
-    const filteredUsersList = users.filter((u) =>
-        (u.email || '').toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-        (u._id || '').toLowerCase().includes(userSearchQuery.toLowerCase())
-    )
+    const handleAddCollaborators = async () => {
+        if (!selectedUserId || selectedUserId.length === 0) {
+            addToast('Please select at least one user to add', 'error')
+            return
+        }
 
-    // Add selected users to project via backend API: PUT /projects/add-user
-    const addCollaborators = async (e) => {
-        e?.preventDefault()
-        const usersToAdd = Array.from(selectedUserId)
         const currentId = project._id || targetProjectId
-        if (usersToAdd.length === 0 || !currentId) return
+        if (!currentId) {
+            addToast('Invalid Project ID. Cannot update workspace.', 'error')
+            return
+        }
 
         try {
-            setAddingCollaborators(true)
+            setSubmittingUsers(true)
             const res = await axios.put('/projects/add-user', {
                 projectId: currentId,
-                users: usersToAdd
+                users: selectedUserId
             })
 
-            if (res.data.project) {
-                const updatedRes = await axios.get(`/projects/get-project/${currentId}`)
-                if (updatedRes.data.project) {
-                    setProject(updatedRes.data.project)
-                    setCollaborators(updatedRes.data.project.users || [])
-                }
+            if (res.data?.project) {
+                setProject(res.data.project)
+                setCollaborators(res.data.project.users || [])
             }
 
-            setTerminalHistory((prev) => [...prev, `[COLLABORATOR] Added ${usersToAdd.length} member(s) to workspace`])
-            addToast(`Added ${usersToAdd.length} collaborator(s) to workspace!`)
-            setSelectedUserId([])
+            addToast(`Added ${selectedUserId.length} collaborator(s) successfully!`, 'success')
             setIsModalOpen(false)
+            setSelectedUserId([])
         } catch (err) {
-            console.error('Failed to add users:', err)
-            addToast('Failed to add collaborators. Please try again.', 'error')
+            console.error('Error adding users to project:', err)
+            addToast(err.response?.data?.message || 'Failed to add collaborators', 'error')
         } finally {
-            setAddingCollaborators(false)
+            setSubmittingUsers(false)
+        }
+    }
+
+    // Rename Workspace Handler
+    const handleRenameWorkspace = async (e) => {
+        e?.preventDefault()
+        if (!newProjectNameInput.trim() || !targetProjectId) return
+        try {
+            const res = await axios.put(`/projects/${targetProjectId}`, {
+                name: newProjectNameInput.trim()
+            })
+            if (res.data?.project) {
+                setProject((prev) => ({ ...prev, name: res.data.project.name }))
+                addToast('Workspace renamed successfully!', 'success')
+                setIsRenameModalOpen(false)
+            }
+        } catch (err) {
+            console.error('Failed to rename project:', err)
+            addToast(err.response?.data?.message || 'Failed to rename workspace', 'error')
         }
     }
 
@@ -437,10 +547,10 @@ const Project = () => {
 
     const handleCloseTab = (e, fileName) => {
         e.stopPropagation()
-        const remaining = openFiles.filter((f) => f !== fileName)
-        setOpenFiles(remaining)
-        if (activeFile === fileName && remaining.length > 0) {
-            setActiveFile(remaining[remaining.length - 1])
+        const newOpen = openFiles.filter((f) => f !== fileName)
+        setOpenFiles(newOpen)
+        if (activeFile === fileName) {
+            setActiveFile(newOpen[newOpen.length - 1] || Object.keys(files)[0] || '')
         }
     }
 
@@ -449,10 +559,15 @@ const Project = () => {
         if (!newFileName.trim()) return
         const name = newFileName.trim()
         if (!files[name]) {
-            setFiles({ ...files, [name]: `// New file: ${name}\n` })
+            const newFiles = { ...files, [name]: `// New file: ${name}\n` }
+            setFiles(newFiles)
             setOpenFiles([...openFiles, name])
             setActiveFile(name)
-            addToast(`Created new file: ${name}`)
+            saveFilesToBackend(newFiles)
+            if (socketConnected && targetProjectId) {
+                sendMessage('file-create', { fileName: name, content: newFiles[name] })
+            }
+            addToast(`Created new file: ${name}`, 'success')
         }
         setNewFileName('')
         setIsCreatingFile(false)
@@ -476,14 +591,36 @@ const Project = () => {
             const keys = Object.keys(newFiles)
             setActiveFile(keys[0] || '')
         }
+
+        saveFilesToBackend(newFiles)
+        if (socketConnected && targetProjectId) {
+            sendMessage('file-delete', { fileName })
+        }
         addToast(`Deleted ${fileName}`, 'info')
     }
 
     const handleContentChange = (content) => {
-        setFiles((prev) => ({
-            ...prev,
-            [activeFile]: content
-        }))
+        setSaveStatus('unsaved')
+        setFiles((prev) => {
+            const updated = {
+                ...prev,
+                [activeFile]: content
+            }
+            // Auto-save debounce (1.2s)
+            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+            saveTimeoutRef.current = setTimeout(() => {
+                saveFilesToBackend(updated)
+            }, 1200)
+
+            // Broadcast real-time edit to room
+            if (socketConnected && targetProjectId) {
+                sendMessage('file-change', {
+                    fileName: activeFile,
+                    content
+                })
+            }
+            return updated
+        })
     }
 
     // Run Code & Rebuild Preview
@@ -496,13 +633,13 @@ const Project = () => {
             ...prev,
             `$ npm run build`,
             `> vite build --mode development`,
-            `✓ Compiled in 12ms. Web container active on http://localhost:3000`
+            `✓ Compiled in 12ms. Web container active and executing.`
         ])
-        addToast('Live preview container updated!', 'success')
+        addToast('Live container preview refreshed!', 'success')
     }
 
     // Interactive Terminal Command Execution
-    const handleTerminalCommand = (e) => {
+    const handleTerminalCommand = async (e) => {
         e.preventDefault()
         if (!terminalInput.trim()) return
 
@@ -513,24 +650,93 @@ const Project = () => {
         if (cmd === 'clear') {
             setTerminalHistory([`Fusion AI Cloud Terminal (Node v20.10.0)`])
             return
-        } else if (cmd === 'help') {
+        }
+
+        if (cmd === 'help') {
             newLogs.push(
                 'Available commands:',
-                '  npm start       - Launch Express web application',
-                '  npm test        - Execute Vitest workspace test suite',
-                '  node app.js     - Run main application entry file',
-                '  git status      - Show working branch and changes',
-                '  ls              - List files in workspace root',
-                '  clear           - Clear terminal history'
+                '  npm start       - Launch Express web container',
+                '  npm test        - Execute workspace Vitest test suite',
+                '  npm run build   - Rebuild application bundles',
+                '  node <file>     - Execute file in cloud runner',
+                '  ls / dir        - List files with line counts',
+                '  cat <file>      - Print file content to terminal',
+                '  touch <file>    - Create a new file',
+                '  rm <file>       - Remove a file',
+                '  ai <prompt>     - Prompt Fusion AI Copilot directly',
+                '  export          - Download project files bundle',
+                '  clear           - Clear terminal log output'
             )
-        } else if (cmd === 'ls') {
-            newLogs.push(Object.keys(files).join('   '))
+        } else if (cmd === 'ls' || cmd === 'dir') {
+            const fileList = Object.entries(files)
+                .map(([name, content]) => `${name} (${content.split('\n').length} lines)`)
+                .join('   ')
+            newLogs.push(fileList)
+        } else if (cmd.startsWith('cat ')) {
+            const fileName = cmd.slice(4).trim()
+            if (files[fileName] !== undefined) {
+                newLogs.push(files[fileName])
+            } else {
+                newLogs.push(`cat: ${fileName}: No such file`)
+            }
+        } else if (cmd.startsWith('touch ')) {
+            const fileName = cmd.slice(6).trim()
+            if (fileName && !files[fileName]) {
+                const updated = { ...files, [fileName]: `// Created via terminal: ${fileName}\n` }
+                setFiles(updated)
+                setOpenFiles([...openFiles, fileName])
+                setActiveFile(fileName)
+                saveFilesToBackend(updated)
+                newLogs.push(`Created file: ${fileName}`)
+            }
+        } else if (cmd.startsWith('rm ')) {
+            const fileName = cmd.slice(3).trim()
+            if (files[fileName]) {
+                const updated = { ...files }
+                delete updated[fileName]
+                setFiles(updated)
+                setOpenFiles(openFiles.filter((f) => f !== fileName))
+                saveFilesToBackend(updated)
+                newLogs.push(`Removed file: ${fileName}`)
+            } else {
+                newLogs.push(`rm: cannot remove '${fileName}': No such file`)
+            }
+        } else if (cmd.startsWith('ai ')) {
+            const aiPromptText = cmd.slice(3).trim()
+            newLogs.push(`[Fusion AI]: Processing query...`)
+            setTerminalHistory(newLogs)
+            try {
+                const res = await axios.post('/ai/prompt', {
+                    prompt: aiPromptText,
+                    activeFile,
+                    fileContent: files[activeFile] || '',
+                    mode: 'copilot',
+                    files
+                })
+                setTerminalHistory((prev) => [
+                    ...prev,
+                    `[Fusion AI (${res.data.source || 'gemini'})]:\n${res.data.reply}`
+                ])
+            } catch (err) {
+                setTerminalHistory((prev) => [...prev, `[AI Error]: ${err.message}`])
+            }
+            return
+        } else if (cmd === 'export') {
+            handleExportProject()
+            newLogs.push(`Workspace export triggered. Bundle downloading.`)
         } else if (cmd === 'git status') {
-            newLogs.push(`On branch main\nYour branch is up to date with 'origin/main'.\n\nnothing to commit, working tree clean`)
+            newLogs.push(
+                `On branch main\nYour branch is up to date with 'origin/main'.\nStatus: ${saveStatus === 'saved' ? 'Clean working tree' : 'Unsaved changes pending cloud sync'}`
+            )
         } else if (cmd === 'npm test') {
-            newLogs.push(`> vitest run\n\n✓ ${activeFile} unit tests passed (3/3)\nTest Files 1 passed (1)\nTests 3 passed (3)`)
-        } else if (cmd === 'npm start' || cmd === 'node app.js') {
-            newLogs.push(`[nodemon] 3.1.0\n[nodemon] starting 'node app.js'\n🚀 Server running smoothly on port 3000\nConnected to Fusion Cloud Runner`)
+            newLogs.push(
+                `> vitest run\n\n✓ ${activeFile} assertions passed (4/4)\n✓ Unit test coverage: 94.2%\nTest Files 1 passed (1)\nTests 4 passed (4)\nDuration: 28ms`
+            )
+        } else if (cmd === 'npm start' || cmd === 'node app.js' || cmd.startsWith('node ')) {
+            newLogs.push(
+                `[fusion-runner] starting process...\n🚀 Server listening on port 3000\nConnected to live cloud preview container`
+            )
+            setBottomTab('preview')
         } else {
             newLogs.push(`bash: command not found: ${cmd}. Type "help" for a list of commands.`)
         }
@@ -538,8 +744,26 @@ const Project = () => {
         setTerminalHistory(newLogs)
     }
 
+    // Export Project as JSON Bundle
+    const handleExportProject = () => {
+        const bundle = {
+            name: project.name,
+            version: '2.5.0',
+            exportedAt: new Date().toISOString(),
+            files
+        }
+        const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${project.name.replace(/\s+/g, '_')}_workspace.json`
+        a.click()
+        URL.revokeObjectURL(url)
+        addToast('Exported workspace bundle!', 'success')
+    }
+
     // AI Prompt / Project Message Send Handler
-    const handleSendPrompt = (e) => {
+    const handleSendPrompt = async (e) => {
         e?.preventDefault()
         if (!prompt.trim() || aiLoading) return
 
@@ -548,36 +772,86 @@ const Project = () => {
         setPrompt('')
         setAiMessages((prev) => [...prev, { sender: 'user', text: userMsg }])
 
-        // Emit real-time project message to socket server
-        if (currentId) {
-            sendMessage('project-message', {
-                message: userMsg,
-                sender: user,
-                projectId: currentId
-            })
+        // If in Team Chat tab, broadcast message over Socket
+        if (rightPanelTab === 'chat') {
+            if (currentId) {
+                sendMessage('project-message', {
+                    message: userMsg,
+                    sender: user,
+                    projectId: currentId
+                })
+            }
+            return
         }
 
+        // Call Real Backend AI API
         setAiLoading(true)
+        try {
+            const res = await axios.post('/ai/prompt', {
+                prompt: userMsg,
+                activeFile,
+                fileContent: files[activeFile] || '',
+                mode: aiMode,
+                files,
+                history: aiMessages.slice(-6)
+            })
 
-        setTimeout(() => {
-            let aiReply = ''
-            if (userMsg.toLowerCase().includes('refactor') || userMsg.toLowerCase().includes('explain')) {
-                aiReply = `I audited **${activeFile}**. Here is an optimized and modular implementation:\n\n\`\`\`javascript\n// Optimized Handler - Fusion AI Studio\nexport const processWorkspaceRequest = async (req, res) => {\n  try {\n    const timestamp = Date.now();\n    return res.status(200).json({\n      ok: true,\n      executionTime: "1.4ms",\n      timestamp\n    });\n  } catch (error) {\n    return res.status(500).json({ error: error.message });\n  }\n};\n\`\`\`\n\nYou can click **Apply to ${activeFile}** below to insert this directly into your file.`
-            } else if (userMsg.toLowerCase().includes('test')) {
-                aiReply = `Here is a Jest / Vitest unit test suite for **${activeFile}**:\n\n\`\`\`javascript\nimport { describe, it, expect } from 'vitest';\n\ndescribe('${activeFile} Suite', () => {\n  it('should initialize without exceptions', () => {\n    expect(true).toBe(true);\n  });\n});\n\`\`\``
-            } else {
-                aiReply = `Understood! I'm synchronized with **${project.name}** in **${aiMode.toUpperCase()}** mode.\n\nWould you like me to generate full code snippets, add a new endpoint, or review syntax in **${activeFile}**?`
-            }
-
-            setAiMessages((prev) => [...prev, { sender: 'ai', text: aiReply }])
+            const data = res.data
+            setAiMessages((prev) => [
+                ...prev,
+                {
+                    sender: 'ai',
+                    text: data.reply || 'AI recommendation completed.',
+                    suggestedCode: data.suggestedCode,
+                    targetFile: data.targetFile || activeFile,
+                    action: data.action
+                }
+            ])
+            setTerminalHistory((prev) => [
+                ...prev,
+                `[AI-LOG] Generated code for ${activeFile} (${data.source || 'gemini'})`
+            ])
+        } catch (err) {
+            console.error('AI prompt error:', err)
+            const errMsg = err.response?.data?.message || 'AI assistant encountered an error. Please try again.'
+            setAiMessages((prev) => [
+                ...prev,
+                {
+                    sender: 'ai',
+                    text: `⚠️ **AI Service Error**: ${errMsg}`
+                }
+            ])
+            addToast('AI prompt failed', 'error')
+        } finally {
             setAiLoading(false)
-            setTerminalHistory((prev) => [...prev, `[AI-LOG] Generated recommendation for ${activeFile}`])
-        }, 850)
+        }
+    }
+
+    // Apply AI-generated code directly to editor
+    const handleApplyAiCode = (code, targetFile) => {
+        const fileToUpdate = targetFile || activeFile
+        handleContentChange(code)
+        saveFilesToBackend({ ...files, [fileToUpdate]: code })
+        addToast(`Applied code directly to ${fileToUpdate}!`, 'success')
+    }
+
+    // Create New File suggested by AI
+    const handleCreateAiFile = (fileName, code) => {
+        const updated = { ...files, [fileName]: code }
+        setFiles(updated)
+        setOpenFiles([...openFiles, fileName])
+        setActiveFile(fileName)
+        saveFilesToBackend(updated)
+        if (socketConnected && targetProjectId) {
+            sendMessage('file-create', { fileName, content: code })
+        }
+        addToast(`Created new file ${fileName} with AI code!`, 'success')
     }
 
     // Helper to extract code block from markdown
     const extractCodeBlock = (text) => {
-        const match = text.match(/```(?:[a-zA-Z0-9]+)?\n([\s\S]*?)```/)
+        if (!text) return null
+        const match = text.match(/```(?:[a-zA-Z0-9_\-+]+)?\n([\s\S]*?)```/)
         return match ? match[1].trim() : null
     }
 
@@ -593,8 +867,56 @@ const Project = () => {
         if (name.endsWith('.html')) return { icon: 'ri-html5-line', color: 'text-orange-400', label: 'HTML' }
         if (name.endsWith('.css')) return { icon: 'ri-css3-line', color: 'text-blue-400', label: 'CSS' }
         if (name.endsWith('.json')) return { icon: 'ri-braces-line', color: 'text-emerald-400', label: '{ }' }
+        if (name.endsWith('.py')) return { icon: 'ri-code-s-slash-line', color: 'text-yellow-400', label: 'PY' }
         return { icon: 'ri-file-text-line', color: 'text-slate-400', label: 'TXT' }
     }
+
+    // Sandboxed Live HTML Document Composer
+    const combinedPreviewDoc = useMemo(() => {
+        const html = files['index.html'] || '<html><head></head><body><div id="root"><h1>No HTML Entry</h1></div></body></html>'
+        const css = files['style.css'] || files['src/style.css'] || files['src/index.css'] || ''
+        const js = files['main.js'] || ''
+
+        let doc = html
+        if (css && !doc.includes(css)) {
+            if (doc.includes('</head>')) {
+                doc = doc.replace('</head>', `<style>${css}</style></head>`)
+            } else {
+                doc = `<style>${css}</style>` + doc
+            }
+        }
+
+        // Inject log and error capture script
+        const captureScript = `<script>
+          (function() {
+            const origLog = console.log;
+            const origErr = console.error;
+            window.addEventListener('error', function(e) {
+              window.parent.postMessage({ type: 'PREVIEW_CONSOLE', level: 'error', message: e.message }, '*');
+            });
+            console.log = function(...args) {
+              origLog.apply(console, args);
+              window.parent.postMessage({ type: 'PREVIEW_CONSOLE', level: 'log', message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ') }, '*');
+            };
+            console.error = function(...args) {
+              origErr.apply(console, args);
+              window.parent.postMessage({ type: 'PREVIEW_CONSOLE', level: 'error', message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ') }, '*');
+            };
+          })();
+        <\/script>`
+
+        if (doc.includes('<head>')) {
+            doc = doc.replace('<head>', `<head>${captureScript}`)
+        } else {
+            doc = captureScript + doc
+        }
+
+        if (js) {
+            doc += `<script>${js}<\/script>`
+        }
+
+        return doc
+    }, [files, previewKey])
 
     return (
         <div className="h-screen w-screen bg-[#070A11] text-white flex flex-col overflow-hidden font-sans select-none">
@@ -616,12 +938,15 @@ const Project = () => {
                 onOpenDetailsModal={() => setIsDetailsModalOpen(true)}
                 onRunCode={handleRunCode}
                 onToggleSplitPreview={() => setIsSplitPreview(!isSplitPreview)}
-                onTriggerAiPrompt={(text) => setPrompt(text)}
+                onTriggerAiPrompt={(text) => {
+                    setPrompt(text)
+                    setIsRightPanelOpen(true)
+                }}
             />
 
             {/* ================= 1. TOP MASTER NAVIGATION BAR ================= */}
             <header className="h-12 border-b border-white/5 bg-[#090D16]/90 backdrop-blur-xl px-3 flex items-center justify-between z-30 shrink-0">
-                {/* Left: Brand Logo, Back & Project Title */}
+                {/* Left: Brand Logo, Back, Project Title & Cloud Save Status */}
                 <div className="flex items-center gap-2.5">
                     <button
                         onClick={() => navigate('/')}
@@ -643,17 +968,38 @@ const Project = () => {
                         <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition">
                             <i className="ri-cpu-line text-xs"></i>
                         </div>
-                        <h1 className="font-bold text-xs text-white truncate max-w-[140px] sm:max-w-xs group-hover:text-blue-300 transition">
+                        <h1 className="font-bold text-xs text-white truncate max-w-[130px] sm:max-w-xs group-hover:text-blue-300 transition">
                             {project.name}
                         </h1>
                         <i className="ri-information-line text-slate-500 text-xs group-hover:text-blue-400 transition"></i>
                     </button>
 
-                    {/* Environment Pill */}
-                    <span className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[10px] font-mono text-slate-400">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                        Node v20.10
-                    </span>
+                    {/* Cloud Save Status Indicator */}
+                    <button
+                        onClick={() => {
+                            saveFilesToBackend(files)
+                            addToast('Workspace files saved!', 'success')
+                        }}
+                        className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[10px] font-medium transition cursor-pointer"
+                        title="Cloud Sync (Cmd+S)"
+                    >
+                        {saveStatus === 'saving' ? (
+                            <>
+                                <i className="ri-loader-4-line animate-spin text-blue-400 text-xs"></i>
+                                <span className="text-blue-400">Saving...</span>
+                            </>
+                        ) : saveStatus === 'unsaved' ? (
+                            <>
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                                <span className="text-amber-400">Unsaved (Cmd+S)</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                <span className="text-emerald-400">Saved</span>
+                            </>
+                        )}
+                    </button>
 
                     {/* Socket Real-time Status */}
                     <span className={`hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border transition ${
@@ -662,7 +1008,7 @@ const Project = () => {
                             : 'bg-amber-500/10 border-amber-500/25 text-amber-400'
                     }`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${socketConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
-                        {socketConnected ? 'Realtime Live' : 'Connecting...'}
+                        {socketConnected ? 'Realtime Sync' : 'Connecting...'}
                     </span>
                 </div>
 
@@ -680,8 +1026,27 @@ const Project = () => {
                     </button>
                 </div>
 
-                {/* Right: Actions, Layout Controls, Members & Run */}
+                {/* Right: Actions, Online Collaborators, Layout Controls & Run */}
                 <div className="flex items-center gap-2 sm:gap-2.5">
+                    {/* Live Online Collaborators Avatars */}
+                    {onlineUsers.length > 0 && (
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[10px]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                            <span className="text-slate-300 font-bold">{onlineUsers.length} online</span>
+                            <div className="flex -space-x-1 ml-1">
+                                {onlineUsers.slice(0, 3).map((u, i) => (
+                                    <div
+                                        key={i}
+                                        className="w-4 h-4 rounded-full bg-indigo-600 border border-slate-900 text-[8px] font-bold text-white flex items-center justify-center uppercase"
+                                        title={u.email}
+                                    >
+                                        {(u.email || 'U')[0]}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Split View Toggle */}
                     <button
                         onClick={() => setIsSplitPreview(!isSplitPreview)}
@@ -719,6 +1084,15 @@ const Project = () => {
                         </button>
                     </div>
 
+                    {/* Export Project Button */}
+                    <button
+                        onClick={handleExportProject}
+                        className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+                        title="Export Workspace Bundle (.json)"
+                    >
+                        <i className="ri-download-cloud-2-line text-xs"></i>
+                    </button>
+
                     {/* Run Code Button */}
                     <button
                         onClick={handleRunCode}
@@ -732,7 +1106,6 @@ const Project = () => {
 
             {/* ================= 2. MAIN WORKSPACE CONTAINER ================= */}
             <div className="flex-grow flex overflow-hidden relative">
-
                 {/* 2.1 ACTIVITY BAR (Far Left Rail, 48px) */}
                 <nav className="w-12 bg-[#060911] border-r border-white/5 flex flex-col items-center justify-between py-3 shrink-0 select-none z-20">
                     <div className="flex flex-col items-center gap-3 w-full">
@@ -759,212 +1132,179 @@ const Project = () => {
                         </button>
 
                         <button
-                            onClick={() => setIsCommandPaletteOpen(true)}
-                            className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-900 transition cursor-pointer"
-                            title="Search Files & Symbols (⌘K)"
+                            onClick={() => {
+                                if (activeActivityTab === 'search') {
+                                    setIsSidebarOpen(!isSidebarOpen)
+                                } else {
+                                    setActiveActivityTab('search')
+                                    setIsSidebarOpen(true)
+                                }
+                            }}
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer relative ${
+                                activeActivityTab === 'search' && isSidebarOpen
+                                    ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-sm'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                            }`}
+                            title="Search in Files"
                         >
                             <i className="ri-search-line text-base"></i>
                         </button>
 
                         <button
                             onClick={() => {
-                                setBottomTab(bottomTab === 'terminal' ? 'hidden' : 'terminal')
-                            }}
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer ${
-                                bottomTab === 'terminal'
-                                    ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                            }`}
-                            title="Cloud Terminal Drawer"
-                        >
-                            <i className="ri-terminal-box-line text-base"></i>
-                        </button>
-
-                        <button
-                            onClick={() => {
-                                if (isSplitPreview) {
-                                    setIsSplitPreview(false)
+                                if (activeActivityTab === 'git') {
+                                    setIsSidebarOpen(!isSidebarOpen)
                                 } else {
-                                    setIsSplitPreview(true)
+                                    setActiveActivityTab('git')
+                                    setIsSidebarOpen(true)
                                 }
                             }}
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer ${
-                                isSplitPreview
-                                    ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer relative ${
+                                activeActivityTab === 'git' && isSidebarOpen
+                                    ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-sm'
                                     : 'text-slate-400 hover:text-white hover:bg-slate-900'
                             }`}
-                            title="Toggle Split Web Preview"
+                            title="Source Control"
                         >
-                            <i className="ri-global-line text-base"></i>
+                            <i className="ri-git-branch-line text-base"></i>
                         </button>
 
                         <button
                             onClick={() => {
                                 setIsRightPanelOpen(!isRightPanelOpen)
+                                setRightPanelTab('copilot')
                             }}
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer ${
-                                isRightPanelOpen
-                                    ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer relative ${
+                                isRightPanelOpen && rightPanelTab === 'copilot'
+                                    ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 shadow-sm'
                                     : 'text-slate-400 hover:text-white hover:bg-slate-900'
                             }`}
-                            title="AI Copilot & Team Chat"
+                            title="AI Copilot"
                         >
-                            <i className="ri-sparkles-line text-base"></i>
+                            <i className="ri-sparkling-fill text-base"></i>
                         </button>
                     </div>
 
-                    <div className="flex flex-col items-center gap-3">
+                    <div className="flex flex-col items-center gap-3 w-full">
                         <button
-                            onClick={handleOpenInviteModal}
-                            className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-blue-400 hover:bg-slate-900 transition cursor-pointer"
-                            title="Team Collaborators"
-                        >
-                            <i className="ri-group-line text-base"></i>
-                        </button>
-                        <button
-                            onClick={() => setIsDetailsModalOpen(true)}
+                            onClick={() => setIsRenameModalOpen(true)}
                             className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-900 transition cursor-pointer"
-                            title="Workspace Info"
+                            title="Workspace Settings / Rename"
                         >
                             <i className="ri-settings-4-line text-base"></i>
                         </button>
                     </div>
                 </nav>
 
-                {/* 2.2 PRIMARY SIDEBAR (Files Explorer, Resizable) */}
+                {/* 2.2 LEFT SIDEBAR (Explorer / Search / Git) */}
                 {isSidebarOpen && (
                     <aside
                         style={{ width: `${sidebarWidth}px` }}
                         className="bg-[#090D16] border-r border-white/5 flex flex-col shrink-0 select-none overflow-hidden"
                     >
-                        {/* Explorer Header */}
-                        <div className="h-9 border-b border-white/5 px-3 flex items-center justify-between shrink-0 bg-[#080C14]">
-                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                                <i className="ri-folders-line text-blue-400"></i>
-                                Explorer
+                        {/* Sidebar Header */}
+                        <div className="h-9 px-3 border-b border-white/5 flex items-center justify-between text-xs text-slate-400 font-semibold uppercase tracking-wider shrink-0 bg-[#080C14]">
+                            <span className="truncate">
+                                {activeActivityTab === 'explorer' && 'Explorer'}
+                                {activeActivityTab === 'search' && 'Search Files'}
+                                {activeActivityTab === 'git' && 'Source Control'}
                             </span>
                             <div className="flex items-center gap-1">
+                                {activeActivityTab === 'explorer' && (
+                                    <>
+                                        <button
+                                            onClick={() => setIsCreatingFile(true)}
+                                            className="p-1 hover:text-white transition cursor-pointer rounded"
+                                            title="New File"
+                                        >
+                                            <i className="ri-file-add-line text-xs"></i>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                saveFilesToBackend(files)
+                                                addToast('Workspace synced!', 'info')
+                                            }}
+                                            className="p-1 hover:text-white transition cursor-pointer rounded"
+                                            title="Sync Files"
+                                        >
+                                            <i className="ri-refresh-line text-xs"></i>
+                                        </button>
+                                    </>
+                                )}
                                 <button
-                                    onClick={() => setIsCreatingFile(true)}
-                                    className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
-                                    title="New File"
+                                    onClick={() => setIsSidebarOpen(false)}
+                                    className="p-1 hover:text-white transition cursor-pointer rounded"
+                                    title="Close Sidebar"
                                 >
-                                    <i className="ri-file-add-line text-xs"></i>
-                                </button>
-                                <button
-                                    onClick={() => setFileFilter('')}
-                                    className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
-                                    title="Refresh Files"
-                                >
-                                    <i className="ri-refresh-line text-xs"></i>
+                                    <i className="ri-arrow-left-s-line text-xs"></i>
                                 </button>
                             </div>
                         </div>
 
                         {/* Search Filter input */}
-                        <div className="p-2 border-b border-white/5 shrink-0">
-                            <div className="relative">
-                                <i className="ri-search-line absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-[10px]"></i>
-                                <input
-                                    type="text"
-                                    value={fileFilter}
-                                    onChange={(e) => setFileFilter(e.target.value)}
-                                    placeholder="Filter files..."
-                                    className="w-full pl-7 pr-2 py-1 rounded bg-slate-900 border border-slate-800 text-[11px] text-white placeholder-slate-500 outline-none focus:border-blue-500 font-mono"
-                                />
+                        {activeActivityTab === 'explorer' && (
+                            <div className="p-2 border-b border-white/5">
+                                <div className="relative">
+                                    <i className="ri-filter-3-line absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                                    <input
+                                        type="text"
+                                        value={fileFilter}
+                                        onChange={(e) => setFileFilter(e.target.value)}
+                                        placeholder="Filter files..."
+                                        className="w-full pl-7 pr-6 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 outline-none focus:border-blue-500 transition font-mono"
+                                    />
+                                    {fileFilter && (
+                                        <button
+                                            onClick={() => setFileFilter('')}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs cursor-pointer"
+                                        >
+                                            <i className="ri-close-circle-fill"></i>
+                                        </button>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-
-                        {/* Inline New File Form */}
-                        {isCreatingFile && (
-                            <form onSubmit={handleCreateFile} className="p-2 border-b border-blue-500/30 bg-blue-500/5 flex items-center gap-1 shrink-0 animate-fadeIn">
-                                <input
-                                    type="text"
-                                    value={newFileName}
-                                    onChange={(e) => setNewFileName(e.target.value)}
-                                    placeholder="filename.js"
-                                    autoFocus
-                                    className="w-full px-2 py-1 bg-slate-900 border border-blue-500 rounded text-xs text-white outline-none font-mono"
-                                />
-                                <button type="submit" className="text-xs text-blue-400 font-bold px-1.5 cursor-pointer">Add</button>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsCreatingFile(false)}
-                                    className="text-xs text-slate-500 hover:text-white px-1 cursor-pointer"
-                                >
-                                    ✕
-                                </button>
-                            </form>
                         )}
 
-                        {/* Section: OPEN EDITORS */}
-                        <div className="border-b border-white/5 pb-1 shrink-0">
-                            <div className="px-3 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
-                                <span>Open Editors</span>
-                                <span className="text-slate-600 font-mono">{openFiles.length}</span>
-                            </div>
-                            <div className="space-y-0.5 px-1.5">
-                                {openFiles.map((f) => {
-                                    const badge = getFileBadge(f)
-                                    const isActive = activeFile === f
-                                    return (
-                                        <div
-                                            key={f}
-                                            onClick={() => setActiveFile(f)}
-                                            className={`px-2 py-1 rounded-md text-xs flex items-center justify-between cursor-pointer group transition ${
-                                                isActive
-                                                    ? 'bg-blue-600/15 text-blue-300 font-medium'
-                                                    : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
-                                            }`}
-                                        >
-                                            <div className="flex items-center gap-1.5 truncate">
-                                                <i className={`${badge.icon} ${badge.color} text-xs`}></i>
-                                                <span className="truncate">{f}</span>
-                                            </div>
-                                            <button
-                                                onClick={(e) => handleCloseTab(e, f)}
-                                                className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-white text-xs transition"
-                                                title="Close"
-                                            >
-                                                ✕
-                                            </button>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        </div>
-
-                        {/* Section: WORKSPACE FILES */}
-                        <div className="flex-grow overflow-y-auto p-1.5 space-y-0.5">
-                            <div className="px-1.5 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
-                                <span>Workspace Files</span>
-                                <span className="text-slate-600 font-mono">{filteredFiles.length}</span>
-                            </div>
+                        {/* File Tree List */}
+                        <div className="flex-grow overflow-y-auto p-1.5 space-y-0.5 text-xs font-mono">
+                            {/* Inline New File Creator */}
+                            {isCreatingFile && (
+                                <form onSubmit={handleCreateFile} className="px-2 py-1 bg-slate-900/90 rounded-lg border border-blue-500/40 mb-1 flex items-center gap-1.5">
+                                    <i className="ri-file-add-fill text-blue-400 text-xs"></i>
+                                    <input
+                                        type="text"
+                                        autoFocus
+                                        value={newFileName}
+                                        onChange={(e) => setNewFileName(e.target.value)}
+                                        onBlur={() => !newFileName.trim() && setIsCreatingFile(false)}
+                                        placeholder="filename.ext"
+                                        className="w-full bg-transparent text-white text-xs outline-none"
+                                    />
+                                </form>
+                            )}
 
                             {filteredFiles.map((fileName) => {
-                                const isActive = activeFile === fileName
                                 const badge = getFileBadge(fileName)
-
+                                const isActive = activeFile === fileName
                                 return (
                                     <div
                                         key={fileName}
                                         onClick={() => handleSelectFile(fileName)}
-                                        className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition group cursor-pointer ${
+                                        className={`group flex items-center justify-between px-2 py-1.5 rounded-lg transition cursor-pointer ${
                                             isActive
-                                                ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
-                                                : 'text-slate-300 hover:bg-slate-900/80 hover:text-white border border-transparent'
+                                                ? 'bg-blue-600/15 text-blue-300 font-semibold border border-blue-500/30'
+                                                : 'text-slate-300 hover:bg-slate-900 hover:text-white'
                                         }`}
                                     >
                                         <div className="flex items-center gap-2 truncate">
-                                            <i className={`${badge.icon} ${badge.color} text-sm shrink-0`}></i>
-                                            <span className="truncate font-mono">{fileName}</span>
+                                            <i className={`${badge.icon} ${badge.color} text-sm`}></i>
+                                            <span className="truncate">{fileName}</span>
                                         </div>
 
-                                        <div className="flex items-center gap-1 shrink-0">
-                                            {isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 mr-1" />}
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
                                             <button
                                                 onClick={(e) => handleDeleteFile(e, fileName)}
-                                                className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-400 text-slate-500 transition cursor-pointer"
+                                                className="p-0.5 text-slate-500 hover:text-red-400 transition"
                                                 title="Delete file"
                                             >
                                                 <i className="ri-delete-bin-line text-xs"></i>
@@ -974,37 +1314,10 @@ const Project = () => {
                                 )
                             })}
                         </div>
-
-                        {/* Collaborator Footer Widget */}
-                        <div className="p-3 border-t border-white/5 bg-[#080C14] shrink-0">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                                    <i className="ri-team-line text-blue-400"></i>
-                                    <span>Team Online</span>
-                                    <span className="px-1.5 py-0.2 rounded-full bg-blue-500/10 text-blue-400 text-[10px] font-bold">
-                                        {collaborators.length}
-                                    </span>
-                                </span>
-                                <button
-                                    onClick={handleOpenInviteModal}
-                                    className="text-[11px] text-blue-400 hover:text-blue-300 font-semibold cursor-pointer"
-                                >
-                                    + Add
-                                </button>
-                            </div>
-                            <div className="space-y-1.5 max-h-20 overflow-y-auto pr-1">
-                                {collaborators.map((member, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 text-xs text-slate-300 truncate">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
-                                        <span className="truncate font-mono text-[11px]">{typeof member === 'string' ? member : member.email}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
                     </aside>
                 )}
 
-                {/* Vertical Resizer Handle between Sidebar and Editor */}
+                {/* Resizer Handle between Sidebar and Editor */}
                 {isSidebarOpen && (
                     <div
                         onMouseDown={() => {
@@ -1015,34 +1328,31 @@ const Project = () => {
                     />
                 )}
 
-                {/* 2.3 CENTER STAGE (Tabs Bar, Code Editor, Bottom Drawer) */}
-                <main className="flex-grow flex flex-col min-w-0 bg-[#0B0F19] overflow-hidden">
-                    {/* Active File Tab Bar */}
-                    <div className="h-9 border-b border-white/5 bg-[#080C14] flex items-center overflow-x-auto shrink-0 px-2 gap-1 select-none">
-                        {openFiles.map((file) => {
-                            const isActive = activeFile === file
-                            const badge = getFileBadge(file)
+                {/* 2.3 CENTER EDITOR STAGE */}
+                <main className="flex-grow flex flex-col min-w-0 overflow-hidden bg-[#070A11]">
+                    {/* Top Editor Tab Bar */}
+                    <div className="h-9 bg-[#080C14] border-b border-white/5 flex items-center px-1 overflow-x-auto select-none shrink-0 scrollbar-none">
+                        {openFiles.map((fileName) => {
+                            const badge = getFileBadge(fileName)
+                            const isActive = activeFile === fileName
                             return (
                                 <div
-                                    key={file}
-                                    onClick={() => setActiveFile(file)}
-                                    className={`h-7 px-3 rounded-t-lg text-xs font-mono flex items-center gap-2 border-t border-x cursor-pointer transition ${
+                                    key={fileName}
+                                    onClick={() => setActiveFile(fileName)}
+                                    className={`group flex items-center gap-2 px-3 py-1.5 text-xs font-mono border-r border-white/5 cursor-pointer transition shrink-0 ${
                                         isActive
-                                            ? 'bg-[#0B0F19] border-white/10 text-white font-medium border-t-2 border-t-blue-500 shadow-sm'
-                                            : 'bg-[#080C14] border-transparent text-slate-400 hover:text-slate-200'
+                                            ? 'bg-[#090D16] text-white border-t-2 border-t-blue-500 font-semibold'
+                                            : 'text-slate-400 hover:bg-slate-900/60 hover:text-slate-200'
                                     }`}
                                 >
-                                    <i className={`${badge.icon} ${badge.color} text-xs`}></i>
-                                    <span>{file}</span>
-                                    {openFiles.length > 1 && (
-                                        <button
-                                            onClick={(e) => handleCloseTab(e, file)}
-                                            className="text-slate-500 hover:text-red-400 transition ml-1"
-                                            title="Close tab"
-                                        >
-                                            ✕
-                                        </button>
-                                    )}
+                                    <i className={`${badge.icon} ${badge.color}`}></i>
+                                    <span>{fileName}</span>
+                                    <button
+                                        onClick={(e) => handleCloseTab(e, fileName)}
+                                        className="opacity-0 group-hover:opacity-100 hover:text-red-400 rounded transition p-0.5"
+                                    >
+                                        <i className="ri-close-line text-xs"></i>
+                                    </button>
                                 </div>
                             )
                         })}
@@ -1122,21 +1432,23 @@ const Project = () => {
                                     </div>
                                 </div>
 
-                                {/* Preview Frame */}
+                                {/* Preview Frame with Sandboxed Iframe */}
                                 <div className="flex-grow p-4 bg-[#070A11] overflow-y-auto flex items-start justify-center">
                                     <div
-                                        key={previewKey}
-                                        className={`w-full transition-all duration-300 rounded-2xl border border-white/5 bg-[#090D16] p-4 text-white shadow-2xl ${
+                                        className={`w-full h-full transition-all duration-300 rounded-2xl border border-white/5 bg-[#090D16] p-1 text-white shadow-2xl flex flex-col ${
                                             previewViewport === 'mobile'
-                                                ? 'max-w-[360px]'
+                                                ? 'max-w-[375px]'
                                                 : previewViewport === 'tablet'
-                                                ? 'max-w-[700px]'
+                                                ? 'max-w-[768px]'
                                                 : 'max-w-full'
                                         }`}
                                     >
-                                        <div
-                                            className="text-xs text-slate-300 space-y-2"
-                                            dangerouslySetInnerHTML={{ __html: files['index.html'] || '<div>Empty HTML Preview</div>' }}
+                                        <iframe
+                                            key={previewKey}
+                                            srcDoc={combinedPreviewDoc}
+                                            title="Fusion AI Live Preview"
+                                            className="w-full flex-grow rounded-xl border-0 bg-white"
+                                            sandbox="allow-scripts allow-modals allow-same-origin"
                                         />
                                     </div>
                                 </div>
@@ -1155,7 +1467,7 @@ const Project = () => {
                         />
                     )}
 
-                    {/* 2.4 BOTTOM DRAWER (Terminal, Web Preview, Logs) */}
+                    {/* 2.4 BOTTOM DRAWER (Terminal, Web Preview, Console Logs) */}
                     {!isSplitPreview && bottomTab !== 'hidden' && (
                         <div
                             style={{ height: `${bottomDrawerHeight}px` }}
@@ -1180,21 +1492,57 @@ const Project = () => {
                                     >
                                         🌐 Web Preview
                                     </button>
-                                </div>
-                                <div className="flex items-center gap-2">
                                     <button
-                                        onClick={() => setTerminalHistory([])}
-                                        className="text-[11px] text-slate-500 hover:text-slate-300"
-                                        title="Clear terminal logs"
+                                        onClick={() => setBottomTab('console')}
+                                        className={`px-2.5 py-0.5 rounded text-[11px] font-semibold transition flex items-center gap-1 ${
+                                            bottomTab === 'console' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                                        }`}
                                     >
-                                        Clear
+                                        <span>📜 Console</span>
+                                        {consoleLogs.length > 0 && (
+                                            <span className="px-1.5 py-0.2 rounded-full bg-slate-800 text-[9px] font-bold">
+                                                {consoleLogs.length}
+                                            </span>
+                                        )}
                                     </button>
+                                </div>
+
+                                <div className="flex items-center gap-2 text-slate-400">
+                                    {bottomTab === 'preview' && (
+                                        <div className="flex items-center gap-1 mr-2">
+                                            <button
+                                                onClick={() => setPreviewViewport('desktop')}
+                                                className={`p-1 rounded ${previewViewport === 'desktop' ? 'text-blue-400' : 'hover:text-white'}`}
+                                            >
+                                                <i className="ri-macbook-line text-xs"></i>
+                                            </button>
+                                            <button
+                                                onClick={() => setPreviewViewport('tablet')}
+                                                className={`p-1 rounded ${previewViewport === 'tablet' ? 'text-blue-400' : 'hover:text-white'}`}
+                                            >
+                                                <i className="ri-tablet-line text-xs"></i>
+                                            </button>
+                                            <button
+                                                onClick={() => setPreviewViewport('mobile')}
+                                                className={`p-1 rounded ${previewViewport === 'mobile' ? 'text-blue-400' : 'hover:text-white'}`}
+                                            >
+                                                <i className="ri-smartphone-line text-xs"></i>
+                                            </button>
+                                            <button
+                                                onClick={() => setPreviewKey((k) => k + 1)}
+                                                className="p-1 hover:text-white transition"
+                                                title="Reload Preview"
+                                            >
+                                                <i className="ri-refresh-line text-xs"></i>
+                                            </button>
+                                        </div>
+                                    )}
                                     <button
                                         onClick={() => setBottomTab('hidden')}
-                                        className="text-slate-400 hover:text-white"
-                                        title="Close drawer"
+                                        className="p-1 hover:text-white transition"
+                                        title="Minimize Drawer"
                                     >
-                                        <i className="ri-close-line"></i>
+                                        <i className="ri-subtract-line text-xs"></i>
                                     </button>
                                 </div>
                             </div>
@@ -1202,19 +1550,24 @@ const Project = () => {
                             {/* Drawer Content */}
                             <div className="flex-grow overflow-hidden flex flex-col">
                                 {bottomTab === 'terminal' ? (
-                                    <div className="flex-grow p-3 font-mono text-xs text-slate-300 overflow-y-auto flex flex-col justify-between">
+                                    <div className="flex-grow p-3 font-mono text-xs overflow-y-auto flex flex-col justify-between bg-[#080C14]">
                                         <div className="space-y-1">
                                             {terminalHistory.map((line, idx) => (
-                                                <div key={idx} className="leading-5">
-                                                    {line.startsWith('$') ? (
-                                                        <span className="text-blue-400 font-semibold">{line}</span>
-                                                    ) : line.includes('error') || line.includes('Error') ? (
-                                                        <span className="text-red-400">{line}</span>
-                                                    ) : line.includes('✓') || line.includes('passed') ? (
-                                                        <span className="text-emerald-400">{line}</span>
-                                                    ) : (
-                                                        <span className="text-slate-400">{line}</span>
-                                                    )}
+                                                <div
+                                                    key={idx}
+                                                    className={`${
+                                                        line.startsWith('$')
+                                                            ? 'text-cyan-400 font-bold'
+                                                            : line.startsWith('[AI')
+                                                            ? 'text-indigo-300'
+                                                            : line.startsWith('✓')
+                                                            ? 'text-emerald-400'
+                                                            : line.includes('Error') || line.includes('error')
+                                                            ? 'text-red-400'
+                                                            : 'text-slate-300'
+                                                    } whitespace-pre-wrap`}
+                                                >
+                                                    {line}
                                                 </div>
                                             ))}
                                             <div ref={terminalEndRef} />
@@ -1227,17 +1580,46 @@ const Project = () => {
                                                 type="text"
                                                 value={terminalInput}
                                                 onChange={(e) => setTerminalInput(e.target.value)}
-                                                placeholder="Type a command (help, npm start, npm test, clear)..."
+                                                placeholder="Type a command (help, npm start, npm test, ai <query>, ls, clear)..."
                                                 className="flex-grow bg-transparent text-white outline-none font-mono text-xs placeholder-slate-600"
                                             />
                                         </form>
                                     </div>
+                                ) : bottomTab === 'console' ? (
+                                    <div className="flex-grow p-3 font-mono text-xs overflow-y-auto space-y-1 bg-[#080C14]">
+                                        {consoleLogs.length === 0 ? (
+                                            <p className="text-slate-500 italic">No console logs recorded from the preview frame yet.</p>
+                                        ) : (
+                                            consoleLogs.map((log, i) => (
+                                                <div
+                                                    key={i}
+                                                    className={`flex items-start gap-2 ${
+                                                        log.level === 'error' ? 'text-red-400' : 'text-slate-300'
+                                                    }`}
+                                                >
+                                                    <span className="text-[10px] text-slate-500 font-sans">{log.time}</span>
+                                                    <span className="font-semibold uppercase text-[10px] px-1 rounded bg-slate-900 border border-slate-800">
+                                                        {log.level}
+                                                    </span>
+                                                    <span>{log.message}</span>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 ) : (
-                                    <div className="flex-grow p-4 bg-[#070A11] overflow-y-auto">
-                                        <div
+                                    <div className="flex-grow p-2 bg-[#070A11] flex items-center justify-center overflow-hidden">
+                                        <iframe
                                             key={previewKey}
-                                            className="rounded-xl border border-white/5 bg-[#090D16] p-4 text-white"
-                                            dangerouslySetInnerHTML={{ __html: files['index.html'] || '<div>Empty HTML Preview</div>' }}
+                                            srcDoc={combinedPreviewDoc}
+                                            title="Live Web Preview"
+                                            className={`h-full transition-all duration-300 rounded-xl border border-white/10 bg-white ${
+                                                previewViewport === 'mobile'
+                                                    ? 'w-[375px]'
+                                                    : previewViewport === 'tablet'
+                                                    ? 'w-[768px]'
+                                                    : 'w-full'
+                                            }`}
+                                            sandbox="allow-scripts allow-modals allow-same-origin"
                                         />
                                     </div>
                                 )}
@@ -1288,17 +1670,24 @@ const Project = () => {
                             {rightPanelTab === 'copilot' ? (
                                 <div className="flex items-center gap-1 text-[10px]">
                                     <button
-                                        onClick={() => setAiMode('coder')}
-                                        className={`px-1.5 py-0.5 rounded transition ${aiMode === 'coder' ? 'text-blue-400 font-bold' : 'text-slate-500'}`}
+                                        onClick={() => setAiMode('copilot')}
+                                        className={`px-1.5 py-0.5 rounded transition ${aiMode === 'copilot' ? 'text-blue-400 font-bold' : 'text-slate-500'}`}
                                     >
-                                        Code
+                                        Auto
                                     </button>
                                     <span className="text-slate-700">•</span>
                                     <button
-                                        onClick={() => setAiMode('reviewer')}
-                                        className={`px-1.5 py-0.5 rounded transition ${aiMode === 'reviewer' ? 'text-blue-400 font-bold' : 'text-slate-500'}`}
+                                        onClick={() => setAiMode('refactor')}
+                                        className={`px-1.5 py-0.5 rounded transition ${aiMode === 'refactor' ? 'text-blue-400 font-bold' : 'text-slate-500'}`}
                                     >
-                                        Review
+                                        Refactor
+                                    </button>
+                                    <span className="text-slate-700">•</span>
+                                    <button
+                                        onClick={() => setAiMode('test')}
+                                        className={`px-1.5 py-0.5 rounded transition ${aiMode === 'test' ? 'text-blue-400 font-bold' : 'text-slate-500'}`}
+                                    >
+                                        Tests
                                     </button>
                                 </div>
                             ) : (
@@ -1312,7 +1701,7 @@ const Project = () => {
                         {/* Messages Thread Container */}
                         <div className="flex-grow p-3 space-y-3 overflow-y-auto text-xs">
                             {aiMessages.map((msg, i) => {
-                                const codeSnippet = extractCodeBlock(msg.text)
+                                const codeSnippet = msg.suggestedCode || extractCodeBlock(msg.text)
                                 const isUser = msg.sender === 'user'
                                 const isCollab = msg.sender === 'collaborator'
 
@@ -1336,16 +1725,16 @@ const Project = () => {
                                             )}
                                             <p className="whitespace-pre-wrap">{msg.text.split('```')[0]}</p>
 
-                                            {/* Code Snippet Card */}
+                                            {/* Code Snippet Card with Action Buttons */}
                                             {codeSnippet && (
-                                                <div className="mt-2.5 rounded-xl border border-white/10 bg-[#060911] p-2.5 font-mono text-[11px] text-blue-300">
+                                                <div className="mt-2.5 rounded-xl border border-white/10 bg-black/50 p-2.5 font-mono text-[11px] overflow-hidden">
                                                     <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-white/5 text-[10px] text-slate-400">
-                                                        <span>Code Proposal</span>
+                                                        <span>Code Snippet</span>
                                                         <div className="flex items-center gap-2">
                                                             <button
                                                                 onClick={() => {
                                                                     navigator.clipboard.writeText(codeSnippet)
-                                                                    addToast('Code snippet copied!')
+                                                                    addToast('Copied code to clipboard!')
                                                                 }}
                                                                 className="hover:text-white transition cursor-pointer"
                                                             >
@@ -1353,14 +1742,22 @@ const Project = () => {
                                                             </button>
                                                             <span>•</span>
                                                             <button
-                                                                onClick={() => {
-                                                                    handleContentChange(codeSnippet)
-                                                                    addToast(`Applied to ${activeFile}!`)
-                                                                }}
+                                                                onClick={() => handleApplyAiCode(codeSnippet, msg.targetFile || activeFile)}
                                                                 className="text-blue-400 hover:text-blue-300 font-bold transition cursor-pointer"
                                                             >
-                                                                Apply to {activeFile}
+                                                                Apply to {msg.targetFile || activeFile}
                                                             </button>
+                                                            {msg.targetFile && msg.targetFile !== activeFile && (
+                                                                <>
+                                                                    <span>•</span>
+                                                                    <button
+                                                                        onClick={() => handleCreateAiFile(msg.targetFile, codeSnippet)}
+                                                                        className="text-emerald-400 hover:text-emerald-300 font-bold transition cursor-pointer"
+                                                                    >
+                                                                        New File
+                                                                    </button>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <pre className="overflow-x-auto p-1 leading-5 text-slate-200">
@@ -1379,32 +1776,40 @@ const Project = () => {
                             {aiLoading && (
                                 <div className="flex items-center gap-2 text-xs text-blue-400 p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20 animate-pulse">
                                     <i className="ri-loader-4-line animate-spin"></i>
-                                    <span>Synthesizing code for {activeFile}...</span>
+                                    <span>Synthesizing code recommendation for {activeFile}...</span>
                                 </div>
                             )}
                         </div>
 
                         {/* Quick AI Action Pills */}
-                        <div className="p-2 border-t border-white/5 flex items-center gap-1.5 overflow-x-auto text-[10px] bg-[#080C14]">
-                            <button
-                                onClick={() => setPrompt(`Explain the purpose and logic of ${activeFile}`)}
-                                className="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white shrink-0 cursor-pointer"
-                            >
-                                ✨ Explain
-                            </button>
-                            <button
-                                onClick={() => setPrompt(`Refactor ${activeFile} for modular performance`)}
-                                className="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white shrink-0 cursor-pointer"
-                            >
-                                🚀 Refactor
-                            </button>
-                            <button
-                                onClick={() => setPrompt(`Write complete unit tests for ${activeFile}`)}
-                                className="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white shrink-0 cursor-pointer"
-                            >
-                                🧪 Tests
-                            </button>
-                        </div>
+                        {rightPanelTab === 'copilot' && (
+                            <div className="p-2 border-t border-white/5 flex items-center gap-1.5 overflow-x-auto text-[10px] bg-[#080C14]">
+                                <button
+                                    onClick={() => setPrompt(`Explain the structure and architecture of ${activeFile}`)}
+                                    className="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white shrink-0 cursor-pointer"
+                                >
+                                    ✨ Explain
+                                </button>
+                                <button
+                                    onClick={() => setPrompt(`Refactor ${activeFile} for clean asynchronous performance`)}
+                                    className="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white shrink-0 cursor-pointer"
+                                >
+                                    ⚡ Refactor
+                                </button>
+                                <button
+                                    onClick={() => setPrompt(`Write comprehensive Vitest assertions for ${activeFile}`)}
+                                    className="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white shrink-0 cursor-pointer"
+                                >
+                                    🧪 Tests
+                                </button>
+                                <button
+                                    onClick={() => setPrompt(`Debug and audit ${activeFile} for edge cases`)}
+                                    className="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white shrink-0 cursor-pointer"
+                                >
+                                    🐛 Debug
+                                </button>
+                            </div>
+                        )}
 
                         {/* Input Box */}
                         <form onSubmit={handleSendPrompt} className="p-2.5 border-t border-white/5 bg-[#080C14]">
@@ -1427,7 +1832,6 @@ const Project = () => {
                         </form>
                     </aside>
                 )}
-
             </div>
 
             {/* ================= 3. USERS / COLLABORATORS MODAL ================= */}
@@ -1441,7 +1845,6 @@ const Project = () => {
                     <div className="w-full max-w-md sm:max-w-lg rounded-3xl border border-white/10 bg-[#090D16] p-5 sm:p-6 pb-20 sm:pb-24 shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden">
                         <div className="absolute top-0 right-0 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
-                        {/* Modal Header */}
                         <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-slate-800 shrink-0">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 border border-blue-500/30 flex items-center justify-center text-white shadow-md">
@@ -1449,12 +1852,12 @@ const Project = () => {
                                 </div>
                                 <div>
                                     <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                                        Select Users
+                                        Invite Collaborators
                                         <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">
                                             {selectedUserId.length} Selected
                                         </span>
                                     </h3>
-                                    <p className="text-xs text-slate-400">Click a user tile to select their ID</p>
+                                    <p className="text-xs text-slate-400">Click a user tile to select for real-time collaboration</p>
                                 </div>
                             </div>
                             <button
@@ -1488,26 +1891,6 @@ const Project = () => {
                             </div>
                         </div>
 
-                        {/* Selected State Variable Indicator Bar */}
-                        {selectedUserId.length > 0 && (
-                            <div className="py-1.5 px-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-300 flex items-center justify-between gap-2 shrink-0 my-1">
-                                <div className="flex items-center gap-1.5 truncate">
-                                    <i className="ri-checkbox-circle-fill text-blue-400 text-xs shrink-0"></i>
-                                    <span className="font-semibold shrink-0">Selected IDs:</span>
-                                    <span className="font-mono text-[10px] text-blue-200 truncate">
-                                        [{selectedUserId.map(id => `"${id.slice(-5)}..."`).join(', ')}]
-                                    </span>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedUserId([])}
-                                    className="text-[10px] text-slate-400 hover:text-red-400 font-semibold underline shrink-0 cursor-pointer"
-                                >
-                                    Clear all
-                                </button>
-                            </div>
-                        )}
-
                         {/* Users List Container */}
                         <div className="flex-grow overflow-y-auto space-y-2 py-2 pr-1 min-h-[160px] max-h-60 sm:max-h-64">
                             {fetchingUsers ? (
@@ -1515,108 +1898,99 @@ const Project = () => {
                                     <i className="ri-loader-4-line animate-spin text-2xl text-blue-400"></i>
                                     <span className="text-xs">Loading registered users...</span>
                                 </div>
-                            ) : filteredUsersList.length === 0 ? (
+                            ) : users.length === 0 ? (
                                 <div className="text-center py-8 px-4 rounded-2xl bg-slate-900/40 border border-dashed border-slate-800">
                                     <i className="ri-user-search-line text-3xl text-slate-600 mb-2 block"></i>
-                                    <p className="text-xs font-semibold text-slate-400">
-                                        {userSearchQuery ? 'No matching users found' : 'No registered users available'}
-                                    </p>
+                                    <p className="text-xs font-semibold text-slate-400">No other registered users available</p>
                                 </div>
                             ) : (
-                                filteredUsersList.map((u) => {
-                                    const isSelected = selectedUserId.includes(u._id)
-                                    const isAlreadyInProject = collaborators.some(c => (c._id || c) === u._id)
+                                users
+                                    .filter((u) => u.email?.toLowerCase().includes(userSearchQuery.toLowerCase()))
+                                    .map((u) => {
+                                        const isSelected = selectedUserId.includes(u._id)
+                                        const isAlreadyInProject = collaborators.some((c) => (c._id || c) === u._id)
 
-                                    return (
-                                        <div
-                                            key={u._id}
-                                            onClick={() => !isAlreadyInProject && handleUserClick(u._id)}
-                                            className={`p-3 rounded-2xl border text-xs flex items-center justify-between transition-all duration-200 select-none ${
-                                                isAlreadyInProject
-                                                    ? 'bg-slate-900/40 border-slate-800/60 opacity-50 cursor-not-allowed'
-                                                    : isSelected
-                                                        ? 'bg-blue-600/20 border-blue-500 ring-1 ring-blue-500/40 text-white shadow-lg shadow-blue-500/10 cursor-pointer'
-                                                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-850 hover:border-slate-700 cursor-pointer'
-                                            }`}
-                                        >
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <div className={`w-8 h-8 rounded-xl font-bold text-xs flex items-center justify-center uppercase shrink-0 shadow-md ${
-                                                    isSelected
-                                                        ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white'
-                                                        : 'bg-slate-800 text-slate-300'
-                                                }`}>
-                                                    {u.email ? u.email[0] : 'U'}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className={`font-semibold truncate ${isSelected ? 'text-white' : 'text-slate-200'}`}>
-                                                        {u.email}
-                                                    </p>
-                                                    <p className="text-[10px] text-slate-500 font-mono truncate">
-                                                        ID: {u._id}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div className="shrink-0 ml-2">
-                                                {isAlreadyInProject ? (
-                                                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 font-semibold border border-slate-700/60">
-                                                        Member
-                                                    </span>
-                                                ) : isSelected ? (
-                                                    <div className="flex items-center gap-1.5 text-blue-400 font-semibold text-xs">
-                                                        <span className="hidden sm:inline text-[10px]">Selected</span>
-                                                        <i className="ri-checkbox-circle-fill text-lg"></i>
+                                        return (
+                                            <div
+                                                key={u._id}
+                                                onClick={() => !isAlreadyInProject && handleUserClick(u._id)}
+                                                className={`p-3 rounded-2xl border text-xs flex items-center justify-between transition cursor-pointer select-none ${
+                                                    isAlreadyInProject
+                                                        ? 'bg-slate-900/40 border-slate-800/60 opacity-50 cursor-not-allowed'
+                                                        : isSelected
+                                                        ? 'bg-blue-600/20 border-blue-500 ring-1 ring-blue-500/40 text-white shadow-lg shadow-blue-500/10'
+                                                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className={`w-8 h-8 rounded-xl font-bold text-xs flex items-center justify-center uppercase shrink-0 shadow-md ${
+                                                        isSelected
+                                                            ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white'
+                                                            : 'bg-slate-800 text-slate-300'
+                                                    }`}>
+                                                        {u.email ? u.email[0] : 'U'}
                                                     </div>
-                                                ) : (
-                                                    <i className="ri-checkbox-blank-circle-line text-slate-600 hover:text-slate-400 text-lg transition"></i>
-                                                )}
+                                                    <div className="min-w-0">
+                                                        <p className="font-semibold text-white truncate">{u.email}</p>
+                                                        <p className="text-[10px] text-slate-400 font-mono truncate">{u._id}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="shrink-0 ml-2">
+                                                    {isAlreadyInProject ? (
+                                                        <span className="text-[10px] text-slate-500 font-semibold px-2 py-0.5 rounded bg-slate-800">
+                                                            Member
+                                                        </span>
+                                                    ) : (
+                                                        <div className={`w-5 h-5 rounded-lg border flex items-center justify-center ${
+                                                            isSelected ? 'bg-blue-600 border-blue-500 text-white' : 'border-slate-700 bg-slate-850'
+                                                        }`}>
+                                                            {isSelected && <i className="ri-check-line text-xs"></i>}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )
-                                })
+                                        )
+                                    })
                             )}
                         </div>
 
-                        {/* Status bar */}
-                        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-900 shrink-0">
-                            <span>
-                                {selectedUserId.length > 0
-                                    ? `${selectedUserId.length} user${selectedUserId.length > 1 ? 's' : ''} selected`
-                                    : 'Select one or more users to add'}
+                        {/* Modal Footer */}
+                        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 bg-[#090D16]/95 border-t border-slate-800 flex items-center justify-between gap-3 backdrop-blur-xl">
+                            <span className="text-xs text-slate-400 font-medium">
+                                {selectedUserId.length} collaborator(s) chosen
                             </span>
-                            <button
-                                type="button"
-                                onClick={() => setIsModalOpen(false)}
-                                className="text-slate-400 hover:text-white transition cursor-pointer text-xs"
-                            >
-                                Cancel
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="px-4 py-2 rounded-xl border border-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-900 transition cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleAddCollaborators}
+                                    disabled={submittingUsers || selectedUserId.length === 0}
+                                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-xs font-semibold text-white transition shadow-lg shadow-blue-600/25 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                                >
+                                    {submittingUsers ? (
+                                        <>
+                                            <i className="ri-loader-4-line animate-spin text-sm"></i>
+                                            <span>Adding...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="ri-user-add-line text-sm"></i>
+                                            <span>Add to Workspace</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
-
-                        {/* Fixed Absolute Bottom Button */}
-                        <button
-                            type="button"
-                            onClick={addCollaborators}
-                            disabled={selectedUserId.length === 0 || addingCollaborators}
-                            className="absolute bottom-4 left-4 right-4 sm:bottom-5 sm:left-6 sm:right-6 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-xs sm:text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 transition shadow-xl shadow-blue-600/30 cursor-pointer"
-                        >
-                            {addingCollaborators ? (
-                                <>
-                                    <i className="ri-loader-4-line animate-spin text-sm"></i>
-                                    <span>Adding...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <i className="ri-user-add-line text-sm"></i>
-                                    <span>Add Collaborator</span>
-                                </>
-                            )}
-                        </button>
                     </div>
                 </div>
             )}
 
-            {/* ================= 4. PROJECT DETAILS MODAL ================= */}
+            {/* ================= 4. WORKSPACE DETAILS MODAL ================= */}
             {isDetailsModalOpen && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn"
@@ -1624,18 +1998,15 @@ const Project = () => {
                         if (e.target === e.currentTarget) setIsDetailsModalOpen(false)
                     }}
                 >
-                    <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#090D16] p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-
-                        {/* Header */}
-                        <div className="flex items-start justify-between pb-4 mb-5 border-b border-white/5">
+                    <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#090D16] p-6 shadow-2xl relative overflow-hidden">
+                        <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 border border-blue-500/30 flex items-center justify-center text-white shadow-lg">
-                                    <i className="ri-folder-3-line text-2xl"></i>
+                                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md">
+                                    <i className="ri-information-line text-lg"></i>
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-white capitalize">{project.name}</h3>
-                                    <p className="text-xs text-blue-400 font-mono">Workspace Details & Configuration</p>
+                                    <h3 className="text-base font-bold text-white">Workspace Details</h3>
+                                    <p className="text-xs text-slate-400">Environment & Collaboration Metadata</p>
                                 </div>
                             </div>
                             <button
@@ -1646,34 +2017,82 @@ const Project = () => {
                             </button>
                         </div>
 
-                        {/* Body Details */}
-                        <div className="space-y-4 text-xs">
-                            <div>
-                                <label className="text-slate-400 font-medium block mb-1">Project ID</label>
-                                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 font-mono text-slate-300 flex items-center justify-between">
-                                    <span className="truncate flex-grow">{project._id || 'Local-Development-ID'}</span>
-                                    {project._id && (
-                                        <button
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(project._id)
-                                                addToast('Copied Project ID!')
-                                            }}
-                                            className="ml-2 text-blue-400 hover:text-white transition cursor-pointer"
-                                        >
-                                            Copy
-                                        </button>
-                                    )}
-                                </div>
+                        <div className="space-y-3 text-xs">
+                            <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800">
+                                <p className="text-slate-400 mb-1">Workspace Name</p>
+                                <p className="font-bold text-white text-sm">{project.name}</p>
                             </div>
 
-                            <div>
-                                <label className="text-slate-400 font-medium block mb-1">Environment</label>
-                                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
-                                    <span className="text-slate-300 font-mono">Node.js v20.10.0 (Linux Container)</span>
-                                    <span className="text-emerald-400 text-[10px] font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">Active</span>
+                            <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800">
+                                <p className="text-slate-400 mb-1">Project ID</p>
+                                <p className="font-mono text-blue-300 break-all select-all">{project._id || targetProjectId}</p>
+                            </div>
+
+                            <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800">
+                                <p className="text-slate-400 mb-1">Collaborators ({collaborators.length})</p>
+                                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                    {collaborators.map((c, i) => (
+                                        <span
+                                            key={i}
+                                            className="px-2 py-0.5 rounded-lg bg-slate-800 text-slate-300 text-[11px] font-mono"
+                                        >
+                                            {typeof c === 'string' ? c : c.email}
+                                        </span>
+                                    ))}
                                 </div>
                             </div>
                         </div>
+
+                        <div className="mt-6 flex justify-end">
+                            <button
+                                onClick={() => setIsDetailsModalOpen(false)}
+                                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white transition cursor-pointer"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ================= 5. RENAME WORKSPACE MODAL ================= */}
+            {isRenameModalOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn"
+                    onMouseDown={(e) => {
+                        if (e.target === e.currentTarget) setIsRenameModalOpen(false)
+                    }}
+                >
+                    <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#090D16] p-6 shadow-2xl relative overflow-hidden">
+                        <h3 className="text-base font-bold text-white mb-2">Rename Workspace</h3>
+                        <p className="text-xs text-slate-400 mb-4">Update the display name of this cloud project</p>
+
+                        <form onSubmit={handleRenameWorkspace} className="space-y-4">
+                            <input
+                                type="text"
+                                autoFocus
+                                value={newProjectNameInput}
+                                onChange={(e) => setNewProjectNameInput(e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white outline-none focus:border-blue-500"
+                            />
+
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsRenameModalOpen(false)}
+                                    className="px-4 py-2 rounded-xl border border-slate-800 text-xs text-slate-300 hover:bg-slate-900 cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={!newProjectNameInput.trim()}
+                                    className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white transition disabled:opacity-50 cursor-pointer"
+                                >
+                                    Save Name
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
