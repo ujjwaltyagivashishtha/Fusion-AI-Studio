@@ -182,6 +182,11 @@ const Project = () => {
         }
     ])
 
+    // Isolated Team Workspace Chat State
+    const [teamMessages, setTeamMessages] = useState([])
+    const [unreadTeamCount, setUnreadTeamCount] = useState(0)
+    const messagesEndRef = useRef(null)
+
     // Collaborators & Modals
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
@@ -216,6 +221,11 @@ const Project = () => {
     useEffect(() => {
         terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [terminalHistory])
+
+    // Scroll right panel messages to bottom
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, [aiMessages, teamMessages, rightPanelTab])
 
     // Save files helper with debouncing
     const saveFilesToBackend = useCallback(async (filesToSave) => {
@@ -277,6 +287,21 @@ const Project = () => {
                     setProject(res.data.project)
                     setCollaborators(res.data.project.users || [])
                     setNewProjectNameInput(res.data.project.name || '')
+                    if (res.data.project.messages && Array.isArray(res.data.project.messages)) {
+                        setTeamMessages(
+                            res.data.project.messages.map((m, idx) => {
+                                const senderId = m.sender?._id || m.sender
+                                const isSelf = senderId === user?._id || m.sender?.email === user?.email
+                                return {
+                                    id: m._id || `history-${idx}`,
+                                    sender: isSelf ? 'user' : 'collaborator',
+                                    senderName: isSelf ? 'You' : (m.senderName || (typeof m.sender === 'object' ? m.sender?.email?.split('@')[0] : 'Collaborator')),
+                                    text: m.text,
+                                    timestamp: m.timestamp || new Date().toISOString()
+                                }
+                            })
+                        )
+                    }
                 }
             })
             .catch((err) => {
@@ -317,7 +342,7 @@ const Project = () => {
 
         const socket = intializeSocket(targetProjectId)
 
-        // 1. Project Chat Message
+        // 1. Project Chat Message (Route to Team Chat, NOT AI Copilot)
         const handleProjectMessage = (data) => {
             const senderId = data.sender?._id || data.sender
             const isSelf = senderId === user?._id || data.sender?.email === user?.email
@@ -327,14 +352,19 @@ const Project = () => {
                 ? data.sender.email?.split('@')[0] || 'Collaborator'
                 : String(data.sender).split('@')[0]
 
-            setAiMessages((prev) => [
+            setTeamMessages((prev) => [
                 ...prev,
                 {
+                    id: Date.now() + Math.random(),
                     sender: 'collaborator',
                     senderName,
-                    text: data.message
+                    text: data.message,
+                    timestamp: data.timestamp || new Date().toISOString()
                 }
             ])
+            if (rightPanelTab !== 'chat') {
+                setUnreadTeamCount((prev) => prev + 1)
+            }
             addToast(`Message from ${senderName}`, 'info')
         }
 
@@ -765,15 +795,25 @@ const Project = () => {
     // AI Prompt / Project Message Send Handler
     const handleSendPrompt = async (e) => {
         e?.preventDefault()
-        if (!prompt.trim() || aiLoading) return
+        if (!prompt.trim() || (rightPanelTab === 'copilot' && aiLoading)) return
 
         const userMsg = prompt.trim()
         const currentId = project._id || targetProjectId
         setPrompt('')
-        setAiMessages((prev) => [...prev, { sender: 'user', text: userMsg }])
 
-        // If in Team Chat tab, broadcast message over Socket
+        // If in Team Chat tab, broadcast message over Socket to team (isolated from AI Copilot)
         if (rightPanelTab === 'chat') {
+            setTeamMessages((prev) => [
+                ...prev,
+                {
+                    id: Date.now() + Math.random(),
+                    sender: 'user',
+                    senderName: 'You',
+                    text: userMsg,
+                    timestamp: new Date().toISOString()
+                }
+            ])
+
             if (currentId) {
                 sendMessage('project-message', {
                     message: userMsg,
@@ -784,7 +824,8 @@ const Project = () => {
             return
         }
 
-        // Call Real Backend AI API
+        // If in Copilot tab, prompt AI Copilot directly
+        setAiMessages((prev) => [...prev, { sender: 'user', text: userMsg }])
         setAiLoading(true)
         try {
             const res = await axios.post('/ai/prompt', {
@@ -1171,8 +1212,12 @@ const Project = () => {
 
                         <button
                             onClick={() => {
-                                setIsRightPanelOpen(!isRightPanelOpen)
-                                setRightPanelTab('copilot')
+                                if (isRightPanelOpen && rightPanelTab === 'copilot') {
+                                    setIsRightPanelOpen(false)
+                                } else {
+                                    setIsRightPanelOpen(true)
+                                    setRightPanelTab('copilot')
+                                }
                             }}
                             className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer relative ${
                                 isRightPanelOpen && rightPanelTab === 'copilot'
@@ -1182,6 +1227,29 @@ const Project = () => {
                             title="AI Copilot"
                         >
                             <i className="ri-sparkling-fill text-base"></i>
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                if (isRightPanelOpen && rightPanelTab === 'chat') {
+                                    setIsRightPanelOpen(false)
+                                } else {
+                                    setIsRightPanelOpen(true)
+                                    setRightPanelTab('chat')
+                                    setUnreadTeamCount(0)
+                                }
+                            }}
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer relative ${
+                                isRightPanelOpen && rightPanelTab === 'chat'
+                                    ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 shadow-sm'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                            }`}
+                            title="Team Chat"
+                        >
+                            <i className="ri-team-line text-base"></i>
+                            {unreadTeamCount > 0 && (
+                                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                            )}
                         </button>
                     </div>
 
@@ -1657,16 +1725,22 @@ const Project = () => {
                                     ✨ Copilot
                                 </button>
                                 <button
-                                    onClick={() => setRightPanelTab('chat')}
-                                    className={`px-2 py-0.5 rounded-md font-semibold transition ${
+                                    onClick={() => {
+                                        setRightPanelTab('chat')
+                                        setUnreadTeamCount(0)
+                                    }}
+                                    className={`px-2 py-0.5 rounded-md font-semibold transition flex items-center gap-1 ${
                                         rightPanelTab === 'chat' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
                                     }`}
                                 >
-                                    👥 Team Chat
+                                    <span>👥 Team Chat</span>
+                                    {unreadTeamCount > 0 && rightPanelTab !== 'chat' && (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping"></span>
+                                    )}
                                 </button>
                             </div>
 
-                            {/* Mode Selector (When Copilot is Active) */}
+                            {/* Mode Selector (When Copilot is Active) or Room Status (When Team Chat is Active) */}
                             {rightPanelTab === 'copilot' ? (
                                 <div className="flex items-center gap-1 text-[10px]">
                                     <button
@@ -1693,95 +1767,144 @@ const Project = () => {
                             ) : (
                                 <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                                    Room Live
+                                    {onlineUsers.length > 0 ? `${onlineUsers.length} online` : 'Room Live'}
                                 </span>
                             )}
                         </div>
 
-                        {/* Messages Thread Container */}
-                        <div className="flex-grow p-3 space-y-3 overflow-y-auto text-xs">
-                            {aiMessages.map((msg, i) => {
-                                const codeSnippet = msg.suggestedCode || extractCodeBlock(msg.text)
-                                const isUser = msg.sender === 'user'
-                                const isCollab = msg.sender === 'collaborator'
+                        {/* Messages Thread Container for Copilot */}
+                        {rightPanelTab === 'copilot' && (
+                            <div className="flex-grow p-3 space-y-3 overflow-y-auto text-xs">
+                                {aiMessages.map((msg, i) => {
+                                    const codeSnippet = msg.suggestedCode || extractCodeBlock(msg.text)
+                                    const isUser = msg.sender === 'user'
 
-                                return (
-                                    <div
-                                        key={i}
-                                        className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
-                                    >
-                                        <div className={`p-3 rounded-2xl max-w-[95%] leading-relaxed ${
-                                            isUser
-                                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-none shadow-md'
-                                                : isCollab
-                                                ? 'bg-indigo-950/80 border border-indigo-700/50 text-slate-100 rounded-bl-none shadow-md'
-                                                : 'bg-[#080C14] border border-white/5 text-slate-200 rounded-bl-none'
-                                        }`}>
-                                            {isCollab && (
-                                                <p className="text-[10px] font-bold text-indigo-400 mb-1 flex items-center gap-1">
-                                                    <i className="ri-user-smile-line"></i>
-                                                    {msg.senderName || 'Team Member'}
-                                                </p>
-                                            )}
-                                            <p className="whitespace-pre-wrap">{msg.text.split('```')[0]}</p>
+                                    return (
+                                        <div
+                                            key={i}
+                                            className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
+                                        >
+                                            <div className={`p-3 rounded-2xl max-w-[95%] leading-relaxed ${
+                                                isUser
+                                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-none shadow-md'
+                                                    : 'bg-[#080C14] border border-white/5 text-slate-200 rounded-bl-none'
+                                            }`}>
+                                                <p className="whitespace-pre-wrap">{msg.text.split('```')[0]}</p>
 
-                                            {/* Code Snippet Card with Action Buttons */}
-                                            {codeSnippet && (
-                                                <div className="mt-2.5 rounded-xl border border-white/10 bg-black/50 p-2.5 font-mono text-[11px] overflow-hidden">
-                                                    <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-white/5 text-[10px] text-slate-400">
-                                                        <span>Code Snippet</span>
-                                                        <div className="flex items-center gap-2">
-                                                            <button
-                                                                onClick={() => {
-                                                                    navigator.clipboard.writeText(codeSnippet)
-                                                                    addToast('Copied code to clipboard!')
-                                                                }}
-                                                                className="hover:text-white transition cursor-pointer"
-                                                            >
-                                                                Copy
-                                                            </button>
-                                                            <span>•</span>
-                                                            <button
-                                                                onClick={() => handleApplyAiCode(codeSnippet, msg.targetFile || activeFile)}
-                                                                className="text-blue-400 hover:text-blue-300 font-bold transition cursor-pointer"
-                                                            >
-                                                                Apply to {msg.targetFile || activeFile}
-                                                            </button>
-                                                            {msg.targetFile && msg.targetFile !== activeFile && (
-                                                                <>
-                                                                    <span>•</span>
-                                                                    <button
-                                                                        onClick={() => handleCreateAiFile(msg.targetFile, codeSnippet)}
-                                                                        className="text-emerald-400 hover:text-emerald-300 font-bold transition cursor-pointer"
-                                                                    >
-                                                                        New File
-                                                                    </button>
-                                                                </>
-                                                            )}
+                                                {/* Code Snippet Card with Action Buttons */}
+                                                {codeSnippet && (
+                                                    <div className="mt-2.5 rounded-xl border border-white/10 bg-black/50 p-2.5 font-mono text-[11px] overflow-hidden">
+                                                        <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-white/5 text-[10px] text-slate-400">
+                                                            <span>Code Snippet</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        navigator.clipboard.writeText(codeSnippet)
+                                                                        addToast('Copied code to clipboard!')
+                                                                    }}
+                                                                    className="hover:text-white transition cursor-pointer"
+                                                                >
+                                                                    Copy
+                                                                </button>
+                                                                <span>•</span>
+                                                                <button
+                                                                    onClick={() => handleApplyAiCode(codeSnippet, msg.targetFile || activeFile)}
+                                                                    className="text-blue-400 hover:text-blue-300 font-bold transition cursor-pointer"
+                                                                >
+                                                                    Apply to {msg.targetFile || activeFile}
+                                                                </button>
+                                                                {msg.targetFile && msg.targetFile !== activeFile && (
+                                                                    <>
+                                                                        <span>•</span>
+                                                                        <button
+                                                                            onClick={() => handleCreateAiFile(msg.targetFile, codeSnippet)}
+                                                                            className="text-emerald-400 hover:text-emerald-300 font-bold transition cursor-pointer"
+                                                                        >
+                                                                            New File
+                                                                        </button>
+                                                                    </>
+                                                                )}
+                                                            </div>
                                                         </div>
+                                                        <pre className="overflow-x-auto p-1 leading-5 text-slate-200">
+                                                            {codeSnippet}
+                                                        </pre>
                                                     </div>
-                                                    <pre className="overflow-x-auto p-1 leading-5 text-slate-200">
-                                                        {codeSnippet}
-                                                    </pre>
-                                                </div>
-                                            )}
+                                                )}
+                                            </div>
+                                            <span className="text-[9px] text-slate-500 mt-1 px-1">
+                                                {isUser ? 'You' : 'Fusion AI'}
+                                            </span>
                                         </div>
-                                        <span className="text-[9px] text-slate-500 mt-1 px-1">
-                                            {isUser ? 'You' : isCollab ? msg.senderName || 'Collaborator' : 'Fusion AI'}
-                                        </span>
+                                    )
+                                })}
+
+                                {aiLoading && (
+                                    <div className="flex items-center gap-2 text-xs text-blue-400 p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20 animate-pulse">
+                                        <i className="ri-loader-4-line animate-spin"></i>
+                                        <span>Synthesizing code recommendation for {activeFile}...</span>
                                     </div>
-                                )
-                            })}
+                                )}
+                                <div ref={messagesEndRef} />
+                            </div>
+                        )}
 
-                            {aiLoading && (
-                                <div className="flex items-center gap-2 text-xs text-blue-400 p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20 animate-pulse">
-                                    <i className="ri-loader-4-line animate-spin"></i>
-                                    <span>Synthesizing code recommendation for {activeFile}...</span>
-                                </div>
-                            )}
-                        </div>
+                        {/* Messages Thread Container for Team Chat */}
+                        {rightPanelTab === 'chat' && (
+                            <div className="flex-grow p-3 space-y-3 overflow-y-auto text-xs">
+                                {teamMessages.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500">
+                                        <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-3 shadow-inner">
+                                            <i className="ri-chat-smile-2-line text-2xl"></i>
+                                        </div>
+                                        <p className="text-xs font-semibold text-slate-300">Team Workspace Chat</p>
+                                        <p className="text-[11px] text-slate-500 mt-1 max-w-[220px] leading-relaxed">
+                                            No messages yet. Send a message below to broadcast updates to collaborators in this workspace.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    teamMessages.map((msg, i) => {
+                                        const isUser = msg.sender === 'user'
+                                        const formattedTime = msg.timestamp
+                                            ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                            : ''
 
-                        {/* Quick AI Action Pills */}
+                                        return (
+                                            <div
+                                                key={msg.id || i}
+                                                className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
+                                            >
+                                                <div className={`p-3 rounded-2xl max-w-[95%] leading-relaxed ${
+                                                    isUser
+                                                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-none shadow-md'
+                                                        : 'bg-indigo-950/70 border border-indigo-700/40 text-slate-100 rounded-bl-none shadow-sm'
+                                                }`}>
+                                                    {!isUser && (
+                                                        <p className="text-[10px] font-bold text-indigo-400 mb-1 flex items-center gap-1">
+                                                            <i className="ri-user-smile-line"></i>
+                                                            {msg.senderName || 'Collaborator'}
+                                                        </p>
+                                                    )}
+                                                    <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-[9px] text-slate-500 mt-1 px-1">
+                                                    <span>{isUser ? 'You' : msg.senderName || 'Collaborator'}</span>
+                                                    {formattedTime && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span>{formattedTime}</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )
+                                    })
+                                )}
+                                <div ref={messagesEndRef} />
+                            </div>
+                        )}
+
+                        {/* Quick AI Action Pills - ONLY shown for Copilot */}
                         {rightPanelTab === 'copilot' && (
                             <div className="p-2 border-t border-white/5 flex items-center gap-1.5 overflow-x-auto text-[10px] bg-[#080C14]">
                                 <button
@@ -1823,10 +1946,11 @@ const Project = () => {
                                 />
                                 <button
                                     type="submit"
-                                    disabled={!prompt.trim() || aiLoading}
+                                    disabled={!prompt.trim() || (rightPanelTab === 'copilot' && aiLoading)}
                                     className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-indigo-400 hover:text-indigo-300 disabled:opacity-30 cursor-pointer"
+                                    title={rightPanelTab === 'copilot' ? 'Send prompt to Copilot' : 'Send message to team'}
                                 >
-                                    <i className="ri-send-plane-fill text-sm"></i>
+                                    <i className={`${rightPanelTab === 'copilot' ? 'ri-sparkling-fill' : 'ri-send-plane-fill'} text-sm`}></i>
                                 </button>
                             </div>
                         </form>
