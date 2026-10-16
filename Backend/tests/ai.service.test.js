@@ -6,6 +6,7 @@ import {
   extractCodeBlock,
   extractCodeBlockWithMeta,
   detectTargetFileAndAction,
+  detectIntent,
   categorizeGeminiError,
   getGenAiClient,
   setGenAiClient
@@ -353,6 +354,196 @@ describe("Fusion AI Code Generation Engine - Test Suite", () => {
         assert.strictEqual(result.action, "create");
         assert.strictEqual(result.errorDetails?.category, "MODEL_UNAVAILABLE");
         assert.ok(result.suggestedCode.includes("jwt.verify"), "Expected valid fallback JWT middleware");
+      } finally {
+        setGenAiClient(originalClient);
+      }
+    });
+  });
+
+  // 11. Regression Tests: Intent-Aware Routing & Failing Prompts Verification
+  describe("11. Regression Tests: Intent-Aware Routing & Failing Prompts", () => {
+    it("should correctly classify prompt intents for all requested categories", () => {
+      // Conceptual
+      assert.strictEqual(detectIntent("What is Mongoose?"), "CONCEPTUAL");
+      assert.strictEqual(detectIntent("What is MongoDB?"), "CONCEPTUAL");
+      assert.strictEqual(detectIntent("How does JWT work?"), "CONCEPTUAL");
+      assert.strictEqual(detectIntent("Difference between SQL and NoSQL"), "CONCEPTUAL");
+
+      // Code Generation
+      assert.strictEqual(detectIntent("Give me user model code using Mongoose."), "CODE_GENERATION");
+      assert.strictEqual(detectIntent("Create a Mongoose user model."), "CODE_GENERATION");
+      assert.strictEqual(detectIntent("Generate a product model using Mongoose."), "CODE_GENERATION");
+      assert.strictEqual(detectIntent("Create JWT authentication middleware"), "CODE_GENERATION");
+
+      // Code Explanation
+      assert.strictEqual(detectIntent("Explain this schema"), "CODE_EXPLANATION");
+      assert.strictEqual(detectIntent("explain the schema"), "CODE_EXPLANATION");
+      assert.strictEqual(detectIntent("what does this file do"), "CODE_EXPLANATION");
+
+      // Debugging
+      assert.strictEqual(detectIntent("Fix this validation error"), "DEBUGGING");
+      assert.strictEqual(detectIntent("Fix this Mongoose validation error"), "DEBUGGING");
+      assert.strictEqual(detectIntent("Debug this syntax error"), "DEBUGGING");
+
+      // Refactoring
+      assert.strictEqual(detectIntent("Refactor this function for performance"), "REFACTORING");
+      assert.strictEqual(detectIntent("Optimize this database query"), "REFACTORING");
+
+      // Test Generation
+      assert.strictEqual(detectIntent("Write unit tests for user service"), "TEST_GENERATION");
+      assert.strictEqual(detectIntent("Create test suite using vitest"), "TEST_GENERATION");
+
+      // Conversation
+      assert.strictEqual(detectIntent("Hello"), "CONVERSATION");
+      assert.strictEqual(detectIntent("Good morning!"), "CONVERSATION");
+    });
+
+    // Prompt A: "What is Mongoose?"
+    it("Prompt A: 'What is Mongoose?' must return an educational explanation without modifying workspace files", async () => {
+      // 1. Fallback verification
+      const fallbackResult = generateFallbackResponse({
+        prompt: "What is Mongoose?",
+        activeFile: "app.js"
+      });
+
+      assert.strictEqual(fallbackResult.suggestedCode, null, "Conceptual question must NOT produce suggestedCode file changes");
+      assert.strictEqual(fallbackResult.targetFile, null, "Conceptual question must have null targetFile");
+      assert.strictEqual(fallbackResult.action, "explain", "Action must be 'explain'");
+      assert.ok(fallbackResult.reply.includes("Object Data Modeling"), "Expected ODM explanation");
+      assert.ok(fallbackResult.reply.includes("MongoDB"), "Expected explanation to discuss MongoDB integration");
+      assert.ok(fallbackResult.reply.includes("Schema"), "Expected explanation to discuss Schemas");
+      assert.ok(!fallbackResult.reply.includes("req?.body"), "Should NOT contain generic req.body echo");
+      assert.ok(!fallbackResult.reply.includes("export const handler"), "Should NOT contain generic handler boilerplate");
+
+      // 2. Mocked Gemini live verification
+      const originalClient = getGenAiClient();
+      const mockModel = {
+        startChat: () => ({
+          sendMessage: async () => ({
+            response: {
+              text: () => `Mongoose is an Object Data Modeling (ODM) library for MongoDB and Node.js.\n\n\`\`\`javascript\nconst schema = new mongoose.Schema({ name: String });\n\`\`\``
+            }
+          })
+        })
+      };
+
+      try {
+        setGenAiClient({ getGenerativeModel: () => mockModel });
+        const liveResult = await processAiPrompt({
+          prompt: "What is Mongoose?",
+          activeFile: "app.js"
+        });
+
+        assert.strictEqual(liveResult.source, "gemini");
+        assert.strictEqual(liveResult.suggestedCode, null, "Live conceptual answer must not extract illustrative snippet as suggestedCode");
+        assert.strictEqual(liveResult.targetFile, null, "Live conceptual answer must have targetFile: null");
+        assert.strictEqual(liveResult.action, "explain");
+      } finally {
+        setGenAiClient(originalClient);
+      }
+    });
+
+    // Prompt B: "Give me user model code using Mongoose."
+    it("Prompt B: 'Give me user model code using Mongoose.' must return task-specific model and schema code", async () => {
+      // 1. Fallback verification
+      const fallbackResult = generateFallbackResponse({
+        prompt: "Give me user model code using Mongoose.",
+        activeFile: "app.js"
+      });
+
+      assert.strictEqual(fallbackResult.targetFile, "models/user.model.js");
+      assert.strictEqual(fallbackResult.action, "create");
+      assert.ok(fallbackResult.suggestedCode, "Expected code implementation");
+      assert.ok(fallbackResult.suggestedCode.includes("mongoose.Schema"), "Expected Mongoose schema");
+      assert.ok(fallbackResult.suggestedCode.includes("email"), "Expected email field");
+      assert.ok(fallbackResult.suggestedCode.includes("password"), "Expected password field");
+      assert.ok(fallbackResult.suggestedCode.includes("bcrypt"), "Expected bcrypt password hashing logic");
+      assert.ok(fallbackResult.suggestedCode.includes("comparePassword"), "Expected password comparison method");
+      assert.ok(!fallbackResult.suggestedCode.includes("req?.body"), "Should NOT contain generic body echo");
+
+      // 2. Mocked Gemini live verification
+      const originalClient = getGenAiClient();
+      const mockModel = {
+        startChat: () => ({
+          sendMessage: async () => ({
+            response: {
+              text: () => `### Target File: models/user.model.js\n### Action: create\n\n\`\`\`javascript\nimport mongoose from "mongoose";\nconst userSchema = new mongoose.Schema({ email: String });\nexport default mongoose.model("User", userSchema);\n\`\`\``
+            }
+          })
+        })
+      };
+
+      try {
+        setGenAiClient({ getGenerativeModel: () => mockModel });
+        const liveResult = await processAiPrompt({
+          prompt: "Give me user model code using Mongoose.",
+          activeFile: "app.js"
+        });
+
+        assert.strictEqual(liveResult.source, "gemini");
+        assert.strictEqual(liveResult.targetFile, "models/user.model.js");
+        assert.strictEqual(liveResult.action, "create");
+        assert.ok(liveResult.suggestedCode.includes("mongoose.Schema"));
+      } finally {
+        setGenAiClient(originalClient);
+      }
+    });
+
+    // Prompt C: "Explain this schema"
+    it("Prompt C: 'Explain this schema' must provide educational explanation targeting the active file without suggesting file modifications", async () => {
+      const fallbackResult = generateFallbackResponse({
+        prompt: "Explain this schema",
+        activeFile: "models/user.model.js",
+        fileContent: "const userSchema = new mongoose.Schema({ email: String });"
+      });
+
+      assert.strictEqual(fallbackResult.action, "explain");
+      assert.strictEqual(fallbackResult.targetFile, "models/user.model.js");
+      assert.strictEqual(fallbackResult.suggestedCode, null, "Code explanation must not provide replacement code");
+      assert.ok(fallbackResult.reply.includes("models/user.model.js"), "Expected reply to reference target schema file");
+    });
+
+    // Prompt D: "Fix this validation error"
+    it("Prompt D: 'Fix this validation error' must return a dedicated Mongoose error handler without generic boilerplate", async () => {
+      const fallbackResult = generateFallbackResponse({
+        prompt: "Fix this validation error",
+        activeFile: "app.js"
+      });
+
+      assert.strictEqual(fallbackResult.targetFile, "middleware/error.middleware.js");
+      assert.strictEqual(fallbackResult.action, "create");
+      assert.ok(fallbackResult.suggestedCode, "Expected error handler code");
+      assert.ok(fallbackResult.suggestedCode.includes("ValidationError"), "Expected ValidationError handling");
+      assert.ok(fallbackResult.suggestedCode.includes("CastError"), "Expected CastError handling");
+      assert.ok(fallbackResult.suggestedCode.includes("11000"), "Expected duplicate key handling");
+      assert.ok(!fallbackResult.suggestedCode.includes("req?.body"), "Should NOT contain generic req.body echo");
+    });
+
+    // Gemini Failure Behavior
+    it("Gemini failure on 'What is Mongoose?' must still safely return Mongoose explanation instead of generic boilerplate", async () => {
+      const originalClient = getGenAiClient();
+      const failingMockClient = {
+        getGenerativeModel: () => {
+          const err = new Error("RESOURCE_EXHAUSTED: Quota exceeded");
+          err.status = 429;
+          throw err;
+        }
+      };
+
+      try {
+        setGenAiClient(failingMockClient);
+        const result = await processAiPrompt({
+          prompt: "What is Mongoose?",
+          activeFile: "app.js"
+        });
+
+        assert.strictEqual(result.source, "fallback");
+        assert.strictEqual(result.suggestedCode, null);
+        assert.strictEqual(result.targetFile, null);
+        assert.strictEqual(result.action, "explain");
+        assert.strictEqual(result.errorDetails?.category, "QUOTA_EXCEEDED");
+        assert.ok(result.reply.includes("Object Data Modeling"));
+        assert.ok(!result.reply.includes("req?.body"));
       } finally {
         setGenAiClient(originalClient);
       }
