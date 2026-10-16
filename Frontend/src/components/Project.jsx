@@ -843,14 +843,16 @@ const Project = () => {
                 {
                     sender: 'ai',
                     text: data.reply || 'AI recommendation completed.',
-                    suggestedCode: data.suggestedCode,
-                    targetFile: data.targetFile || activeFile,
-                    action: data.action
+                    suggestedCode: data.suggestedCode || null,
+                    targetFile: data.targetFile || null,
+                    action: data.action || 'explain'
                 }
             ])
             setTerminalHistory((prev) => [
                 ...prev,
-                `[AI-LOG] Generated code for ${activeFile} (${data.source || 'gemini'})`
+                data.suggestedCode
+                    ? `[AI-LOG] Generated code for ${data.targetFile || activeFile} (${data.source || 'gemini'})`
+                    : `[AI-LOG] Responded to query (${data.source || 'gemini'})`
             ])
         } catch (err) {
             console.error('AI prompt error:', err)
@@ -902,6 +904,53 @@ const Project = () => {
         if (!text) return null
         const match = text.match(/```(?:[a-zA-Z0-9_\-+]+)?\n([\s\S]*?)```/)
         return match ? match[1].trim() : null
+    }
+
+    // Helper to render AI response body preserving markdown and example code blocks
+    const renderAiMessageContent = (text, isActionable = false) => {
+        if (!text) return null
+        if (isActionable && text.includes('```')) {
+            const preamble = text.split('```')[0].trim()
+            return <p className="whitespace-pre-wrap">{preamble || 'Here is the requested implementation:'}</p>
+        }
+        if (!text.includes('```')) {
+            return <p className="whitespace-pre-wrap">{text}</p>
+        }
+        const parts = text.split(/(```[\s\S]*?```)/g)
+        return (
+            <div className="space-y-2">
+                {parts.map((part, idx) => {
+                    if (part.startsWith('```') && part.endsWith('```')) {
+                        const content = part.slice(3, -3).replace(/^\r?\n/, '')
+                        const firstNewline = content.indexOf('\n')
+                        const lang = firstNewline !== -1 ? content.slice(0, firstNewline).trim() : ''
+                        const snippet = firstNewline !== -1 ? content.slice(firstNewline + 1) : content
+                        return (
+                            <div key={idx} className="my-2 rounded-xl border border-white/10 bg-black/60 p-2 font-mono text-[11px] overflow-hidden">
+                                <div className="flex items-center justify-between pb-1 mb-1 border-b border-white/5 text-[10px] text-slate-400">
+                                    <span className="font-semibold text-slate-300 flex items-center gap-1">
+                                        <i className="ri-code-line text-blue-400"></i>
+                                        {lang || 'example'}
+                                    </span>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(snippet)
+                                            addToast('Copied example code to clipboard!')
+                                        }}
+                                        className="hover:text-white transition cursor-pointer text-[10px]"
+                                    >
+                                        Copy
+                                    </button>
+                                </div>
+                                <pre className="overflow-x-auto p-1 leading-4 text-slate-200">{snippet}</pre>
+                            </div>
+                        )
+                    }
+                    const trimmed = part.trim()
+                    return trimmed ? <p key={idx} className="whitespace-pre-wrap">{part}</p> : null
+                })}
+            </div>
+        )
     }
 
     // Filter files list
@@ -1784,8 +1833,9 @@ const Project = () => {
                         {rightPanelTab === 'copilot' && (
                             <div className="flex-grow p-3 space-y-3 overflow-y-auto text-xs">
                                 {aiMessages.map((msg, i) => {
-                                    const codeSnippet = msg.suggestedCode || extractCodeBlock(msg.text)
                                     const isUser = msg.sender === 'user'
+                                    const isActionable = Boolean(!isUser && msg.suggestedCode && msg.action && msg.action !== 'explain')
+                                    const codeSnippet = isActionable ? msg.suggestedCode : null
 
                                     return (
                                         <div
@@ -1797,10 +1847,14 @@ const Project = () => {
                                                     ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-none shadow-md'
                                                     : 'bg-[#080C14] border border-white/5 text-slate-200 rounded-bl-none'
                                             }`}>
-                                                <p className="whitespace-pre-wrap">{msg.text.split('```')[0]}</p>
+                                                {isUser ? (
+                                                    <p className="whitespace-pre-wrap">{msg.text}</p>
+                                                ) : (
+                                                    renderAiMessageContent(msg.text, isActionable)
+                                                )}
 
-                                                {/* Code Snippet Card with Action Buttons */}
-                                                {codeSnippet && (
+                                                {/* Code Snippet Card with Action Buttons - Only for genuine code modifications */}
+                                                {isActionable && codeSnippet && (
                                                     <div className="mt-2.5 rounded-xl border border-white/10 bg-black/50 p-2.5 font-mono text-[11px] overflow-hidden">
                                                         <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-white/5 text-[10px] text-slate-400">
                                                             <span className="font-semibold text-slate-300 flex items-center gap-1.5 truncate max-w-[140px]">
