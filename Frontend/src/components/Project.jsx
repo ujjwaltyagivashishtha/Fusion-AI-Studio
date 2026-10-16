@@ -868,11 +868,19 @@ const Project = () => {
         }
     }
 
-    // Apply AI-generated code directly to editor
+    // Apply AI-generated code directly to editor / target file
     const handleApplyAiCode = (code, targetFile) => {
         const fileToUpdate = targetFile || activeFile
-        handleContentChange(code)
-        saveFilesToBackend({ ...files, [fileToUpdate]: code })
+        if (fileToUpdate === activeFile) {
+            handleContentChange(code)
+        }
+        const updated = { ...files, [fileToUpdate]: code }
+        setFiles(updated)
+        if (!openFiles.includes(fileToUpdate)) {
+            setOpenFiles((prev) => [...prev, fileToUpdate])
+        }
+        setActiveFile(fileToUpdate)
+        saveFilesToBackend(updated)
         addToast(`Applied code directly to ${fileToUpdate}!`, 'success')
     }
 
@@ -1795,8 +1803,11 @@ const Project = () => {
                                                 {codeSnippet && (
                                                     <div className="mt-2.5 rounded-xl border border-white/10 bg-black/50 p-2.5 font-mono text-[11px] overflow-hidden">
                                                         <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-white/5 text-[10px] text-slate-400">
-                                                            <span>Code Snippet</span>
-                                                            <div className="flex items-center gap-2">
+                                                            <span className="font-semibold text-slate-300 flex items-center gap-1.5 truncate max-w-[140px]">
+                                                                <i className="ri-file-code-line text-indigo-400"></i>
+                                                                {msg.targetFile || activeFile}
+                                                            </span>
+                                                            <div className="flex items-center gap-2 shrink-0">
                                                                 <button
                                                                     onClick={() => {
                                                                         navigator.clipboard.writeText(codeSnippet)
@@ -1807,22 +1818,32 @@ const Project = () => {
                                                                     Copy
                                                                 </button>
                                                                 <span>•</span>
-                                                                <button
-                                                                    onClick={() => handleApplyAiCode(codeSnippet, msg.targetFile || activeFile)}
-                                                                    className="text-blue-400 hover:text-blue-300 font-bold transition cursor-pointer"
-                                                                >
-                                                                    Apply to {msg.targetFile || activeFile}
-                                                                </button>
-                                                                {msg.targetFile && msg.targetFile !== activeFile && (
+                                                                {msg.targetFile && msg.targetFile !== activeFile ? (
                                                                     <>
-                                                                        <span>•</span>
                                                                         <button
                                                                             onClick={() => handleCreateAiFile(msg.targetFile, codeSnippet)}
-                                                                            className="text-emerald-400 hover:text-emerald-300 font-bold transition cursor-pointer"
+                                                                            className="text-emerald-400 hover:text-emerald-300 font-bold transition cursor-pointer flex items-center gap-1"
                                                                         >
-                                                                            New File
+                                                                            <i className="ri-file-add-line"></i>
+                                                                            {files[msg.targetFile] ? `Update ${msg.targetFile.split('/').pop()}` : `Create ${msg.targetFile.split('/').pop()}`}
+                                                                        </button>
+                                                                        <span>•</span>
+                                                                        <button
+                                                                            onClick={() => handleApplyAiCode(codeSnippet, activeFile)}
+                                                                            className="text-slate-400 hover:text-white transition cursor-pointer"
+                                                                            title={`Apply directly to active file (${activeFile})`}
+                                                                        >
+                                                                            Apply to {activeFile}
                                                                         </button>
                                                                     </>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => handleApplyAiCode(codeSnippet, activeFile)}
+                                                                        className="text-blue-400 hover:text-blue-300 font-bold transition cursor-pointer flex items-center gap-1"
+                                                                    >
+                                                                        <i className="ri-magic-line"></i>
+                                                                        Apply to {activeFile}
+                                                                    </button>
                                                                 )}
                                                             </div>
                                                         </div>
