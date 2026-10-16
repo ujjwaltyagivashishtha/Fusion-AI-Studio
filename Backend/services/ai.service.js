@@ -333,11 +333,17 @@ For every request, understand the goal, use the available project context, deliv
       }
       contextPrompt += `\nMode: ${mode}\nUser Request: ${prompt}`;
 
-      const chatSession = model.startChat({
-        history: history.slice(-6).map((msg) => ({
+      // Only feed real user prompts and AI replies into Gemini's conversation history
+      const cleanHistory = (Array.isArray(history) ? history : [])
+        .filter((msg) => msg && (msg.sender === "user" || msg.sender === "ai" || msg.sender === "model"))
+        .slice(-6)
+        .map((msg) => ({
           role: msg.sender === "user" ? "user" : "model",
-          parts: [{ text: msg.text }]
-        }))
+          parts: [{ text: msg.text || "" }]
+        }));
+
+      const chatSession = model.startChat({
+        history: cleanHistory
       });
 
       const result = await chatSession.sendMessage(contextPrompt);
