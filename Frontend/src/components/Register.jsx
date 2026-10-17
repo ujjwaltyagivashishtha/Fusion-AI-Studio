@@ -2,256 +2,262 @@ import { useState, useContext } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import axios from '../config/axios'
 import { UserContext } from '../context/user.context'
+import ThemeToggle from './ThemeToggle'
 
 const Register = () => {
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
-    const [showPassword, setShowPassword] = useState(false)
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-    const { setUser } = useContext(UserContext)
-    const navigate = useNavigate()
+  const { setUser } = useContext(UserContext)
+  const navigate = useNavigate()
 
-    // Password strength calculation
-    const getPasswordStrength = () => {
-        if (!password) return { label: '', color: '', percent: 0 }
-        if (password.length < 6) return { label: 'Weak (min 6 chars)', color: 'bg-red-500', percent: 30 }
-        if (password.length < 10) return { label: 'Medium', color: 'bg-amber-500', percent: 65 }
-        return { label: 'Strong', color: 'bg-emerald-500', percent: 100 }
+  // Password strength calculation
+  const getPasswordStrength = () => {
+    if (!password) return { label: '', color: '', percent: 0 }
+    if (password.length < 4) return { label: 'Too short (min 3 chars)', color: 'bg-red-500', percent: 25 }
+    if (password.length < 8) return { label: 'Acceptable', color: 'bg-amber-500', percent: 60 }
+    return { label: 'Strong', color: 'bg-emerald-500', percent: 100 }
+  }
+
+  const strength = getPasswordStrength()
+
+  const submitHandler = async (e) => {
+    e.preventDefault()
+    setError('')
+
+    if (!email || !password) {
+      setError('Please enter both your email address and password.')
+      return
     }
 
-    const strength = getPasswordStrength()
-
-    const submitHandler = async (e) => {
-        e.preventDefault()
-        setError('')
-
-        if (!email || !password) {
-            setError('Please enter both your email address and password.')
-            return
-        }
-
-        if (password.length < 3) {
-            setError('Password must be at least 3 characters long.')
-            return
-        }
-
-        try {
-            setLoading(true)
-
-            const res = await axios.post('/users/register', {
-                email,
-                password
-            })
-
-            localStorage.setItem('token', res.data.token)
-            setUser(res.data.user)
-            navigate('/')
-        } catch (err) {
-            console.error(err.response?.data)
-            setError(
-                err.response?.data?.message ||
-                'Unable to create your account. Please try again.'
-            )
-        } finally {
-            setLoading(false)
-        }
+    if (password.length < 3) {
+      setError('Password must be at least 3 characters long.')
+      return
     }
 
-    return (
-        <div className="relative min-h-screen bg-[#080C14] bg-ambient-grid text-white flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-hidden">
-            {/* Ambient Background Glows */}
-            <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
-            <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none animate-pulse-glow" style={{ animationDelay: '2s' }} />
+    try {
+      setLoading(true)
 
-            <div className="relative z-10 w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 rounded-3xl border border-white/10 bg-slate-950/70 backdrop-blur-2xl shadow-2xl overflow-hidden">
-                
-                {/* Left Side: Feature Showcase */}
-                <div className="lg:col-span-5 hidden lg:flex flex-col justify-between p-10 bg-gradient-to-br from-indigo-950/60 via-blue-950/40 to-slate-950 border-r border-white/10 relative overflow-hidden">
-                    <div className="absolute -left-16 -top-16 w-64 h-64 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+      const res = await axios.post('/users/register', {
+        email: email.trim(),
+        password
+      })
 
-                    <div>
-                        {/* Brand Logo */}
-                        <div className="flex items-center gap-3 mb-10">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                                <i className="ri-cpu-line text-2xl text-white"></i>
-                            </div>
-                            <div>
-                                <h2 className="text-xl font-bold bg-gradient-to-r from-white via-slate-200 to-indigo-400 bg-clip-text text-transparent">
-                                    Fusion AI Studio
-                                </h2>
-                                <p className="text-xs text-indigo-400/80 font-medium tracking-wide">
-                                    START CREATING TODAY
-                                </p>
-                            </div>
-                        </div>
+      localStorage.setItem('token', res.data.token)
+      setUser(res.data.user)
+      navigate('/')
+    } catch (err) {
+      console.error(err.response?.data)
+      setError(
+        err.response?.data?.message ||
+        'Unable to create your account. Please try again with another email address.'
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
 
-                        <div className="space-y-6">
-                            <h3 className="text-2xl font-extrabold text-white leading-tight">
-                                Unlock Instant <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">AI Project Workspaces</span>
-                            </h3>
-                            <p className="text-sm text-slate-400 leading-relaxed">
-                                Join thousands of engineers building next-generation web applications with real-time AI assistance and instant cloud execution.
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Features checklist */}
-                    <div className="space-y-3.5 my-8">
-                        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-slate-300">
-                            <i className="ri-checkbox-circle-fill text-indigo-400 text-base"></i>
-                            <span>Instant project creation & environment setups</span>
-                        </div>
-                        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-slate-300">
-                            <i className="ri-checkbox-circle-fill text-cyan-400 text-base"></i>
-                            <span>Seamless collaborator invites via email</span>
-                        </div>
-                        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-slate-300">
-                            <i className="ri-checkbox-circle-fill text-blue-400 text-base"></i>
-                            <span>Secure token authentication & Redis blacklisting</span>
-                        </div>
-                    </div>
-
-                    <div className="text-xs text-slate-500 border-t border-white/10 pt-4 flex items-center justify-between">
-                        <span>Free tier account available</span>
-                        <span className="text-indigo-400 font-medium">100% Free Setup</span>
-                    </div>
-                </div>
-
-                {/* Right Side: Register Form */}
-                <div className="lg:col-span-7 p-6 sm:p-10 lg:p-12 flex flex-col justify-center">
-                    {/* Mobile Logo Header */}
-                    <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                            <i className="ri-cpu-line text-xl text-white"></i>
-                        </div>
-                        <h2 className="text-lg font-bold bg-gradient-to-r from-white to-indigo-400 bg-clip-text text-transparent">
-                            Fusion AI Studio
-                        </h2>
-                    </div>
-
-                    <div className="mb-8">
-                        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                            Create Account
-                        </h1>
-                        <p className="text-sm text-slate-400 mt-1">
-                            Set up your developer profile to start building
-                        </p>
-                    </div>
-
-                    <form onSubmit={submitHandler} className="space-y-5">
-                        {/* Error Alert */}
-                        {error && (
-                            <div className="flex items-start gap-3 p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-sm animate-shake">
-                                <i className="ri-error-warning-line text-lg shrink-0 mt-0.5"></i>
-                                <span>{error}</span>
-                            </div>
-                        )}
-
-                        {/* Email Input */}
-                        <div>
-                            <label htmlFor="email" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                                Email Address
-                            </label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                                    <i className="ri-mail-line text-lg"></i>
-                                </div>
-                                <input
-                                    id="email"
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="developer@fusionai.com"
-                                    autoComplete="email"
-                                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/80 border border-slate-700/80 text-white placeholder-slate-500 outline-none transition duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-sm"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Password Input */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <label htmlFor="password" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                                    Password
-                                </label>
-                            </div>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                                    <i className="ri-lock-line text-lg"></i>
-                                </div>
-                                <input
-                                    id="password"
-                                    type={showPassword ? 'text' : 'password'}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="Choose a strong password"
-                                    autoComplete="new-password"
-                                    className="w-full pl-10 pr-11 py-3 rounded-xl bg-slate-900/80 border border-slate-700/80 text-white placeholder-slate-500 outline-none transition duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-sm"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition"
-                                >
-                                    <i className={showPassword ? "ri-eye-off-line" : "ri-eye-line"}></i>
-                                </button>
-                            </div>
-
-                            {/* Strength indicator */}
-                            {password && (
-                                <div className="mt-2.5">
-                                    <div className="flex items-center justify-between text-xs mb-1">
-                                        <span className="text-slate-400">Password Strength:</span>
-                                        <span className="font-medium text-slate-300">{strength.label}</span>
-                                    </div>
-                                    <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                        <div 
-                                            className={`h-full transition-all duration-300 ${strength.color}`} 
-                                            style={{ width: `${strength.percent}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Submit Button */}
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 active:from-indigo-700 active:to-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition duration-200 shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 group cursor-pointer"
-                        >
-                            {loading ? (
-                                <>
-                                    <i className="ri-loader-4-line text-lg animate-spin"></i>
-                                    <span>Creating Account...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <span>Create Account</span>
-                                    <i className="ri-arrow-right-line group-hover:translate-x-1 transition-transform"></i>
-                                </>
-                            )}
-                        </button>
-                    </form>
-
-                    {/* Switch to Login */}
-                    <div className="mt-8 pt-6 border-t border-slate-800/80 text-center">
-                        <p className="text-sm text-slate-400">
-                            Already have an account?{' '}
-                            <Link
-                                to="/login"
-                                className="text-indigo-400 hover:text-indigo-300 font-semibold transition inline-flex items-center gap-1"
-                            >
-                                Sign in <i className="ri-arrow-right-s-line"></i>
-                            </Link>
-                        </p>
-                    </div>
-                </div>
-            </div>
+  return (
+    <div className="min-h-screen bg-app cosmic-grid-bg ambient-glow-bg text-primary flex flex-col justify-between p-4 sm:p-6 lg:p-8 transition-colors duration-200 relative">
+      {/* Top Header Bar */}
+      <header className="max-w-6xl w-full mx-auto flex items-center justify-between pb-6 relative z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-violet-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25 ring-1 ring-white/20">
+            <i className="ri-cpu-line text-xl" />
+          </div>
+          <div>
+            <h2 className="text-base font-extrabold tracking-tight font-display text-primary">
+              Fusion <span className="text-gradient-brand">AI Studio</span>
+            </h2>
+            <p className="text-[11px] text-muted font-medium tracking-wide">Cloud Developer Environment</p>
+          </div>
         </div>
-    )
+
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+        </div>
+      </header>
+
+      {/* Main Glassmorphic Card */}
+      <main className="max-w-5xl w-full mx-auto my-auto grid grid-cols-1 lg:grid-cols-12 rounded-3xl glass-panel overflow-hidden relative z-10 shadow-2xl">
+        {/* Left Col: Developer Features */}
+        <div className="lg:col-span-5 hidden lg:flex flex-col justify-between p-10 bg-sidebar/70 backdrop-blur-md border-r border-default">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/25 text-xs font-semibold text-indigo-400 mb-6 backdrop-blur-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+              DEVELOPER REGISTRATION
+            </div>
+
+            <h3 className="text-2xl font-extrabold text-primary tracking-tight leading-snug font-display">
+              Unlock your isolated cloud engineering workspace in seconds.
+            </h3>
+            <p className="text-xs text-secondary mt-3 leading-relaxed">
+              Create an account to build microservices, full-stack React applications, and test AI code generation in real-time.
+            </p>
+          </div>
+
+          <div className="space-y-3.5 my-8">
+            <div className="flex items-center gap-3.5 p-3.5 rounded-2xl glass-card text-xs text-secondary hover:text-primary transition">
+              <div className="w-8 h-8 rounded-xl bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center text-indigo-400 shrink-0">
+                <i className="ri-checkbox-circle-fill text-base" />
+              </div>
+              <span className="font-medium">Full-stack Starter Templates (Express, Vite, Flask)</span>
+            </div>
+            <div className="flex items-center gap-3.5 p-3.5 rounded-2xl glass-card text-xs text-secondary hover:text-primary transition">
+              <div className="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center text-cyan-400 shrink-0">
+                <i className="ri-checkbox-circle-fill text-base" />
+              </div>
+              <span className="font-medium">Collaborative Socket Presence & File Sharing</span>
+            </div>
+            <div className="flex items-center gap-3.5 p-3.5 rounded-2xl glass-card text-xs text-secondary hover:text-primary transition">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-400 shrink-0">
+                <i className="ri-checkbox-circle-fill text-base" />
+              </div>
+              <span className="font-medium">Contextual AI Code Assistance & Diff Review</span>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-default flex items-center justify-between text-[11px] text-muted font-mono">
+            <span>Free Tier Developer Setup</span>
+            <span className="text-indigo-400 font-semibold">100% Free Access</span>
+          </div>
+        </div>
+
+        {/* Right Col: Register Form */}
+        <div className="lg:col-span-7 p-6 sm:p-10 lg:p-12 flex flex-col justify-center bg-surface/60 backdrop-blur-md">
+          <div className="mb-8">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display text-gradient-cosmic">
+              Create Developer Account
+            </h1>
+            <p className="text-xs text-secondary mt-1.5">
+              Set up your profile to start launching workspaces and inviting team members.
+            </p>
+          </div>
+
+          <form onSubmit={submitHandler} className="space-y-4">
+            {/* Error Message */}
+            {error && (
+              <div
+                role="alert"
+                className="flex items-start gap-3 p-3.5 rounded-2xl border border-red-500/30 bg-red-500/10 text-red-400 text-xs animate-slideDown"
+              >
+                <i className="ri-error-warning-line text-base shrink-0 mt-0.5" />
+                <span className="font-medium leading-relaxed">{error}</span>
+              </div>
+            )}
+
+            {/* Email Field */}
+            <div>
+              <label htmlFor="register-email" className="block text-xs font-semibold text-secondary uppercase tracking-wider mb-2">
+                Email Address
+              </label>
+              <div className="relative">
+                <i className="ri-mail-line absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-base" />
+                <input
+                  id="register-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="developer@fusion.ai"
+                  autoComplete="email"
+                  required
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-default bg-input/80 text-primary placeholder-muted outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-xs transition font-sans shadow-inner"
+                />
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="register-password" className="block text-xs font-semibold text-secondary uppercase tracking-wider">
+                  Password
+                </label>
+              </div>
+              <div className="relative">
+                <i className="ri-lock-line absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-base" />
+                <input
+                  id="register-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Choose a password (min 3 characters)"
+                  autoComplete="new-password"
+                  required
+                  className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-default bg-input/80 text-primary placeholder-muted outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-xs transition font-sans shadow-inner"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-primary transition p-1 cursor-pointer"
+                >
+                  <i className={showPassword ? 'ri-eye-off-line' : 'ri-eye-line'} />
+                </button>
+              </div>
+
+              {/* Password Strength Meter */}
+              {password && (
+                <div className="mt-2.5">
+                  <div className="flex items-center justify-between text-[11px] mb-1">
+                    <span className="text-muted">Password Strength:</span>
+                    <span className="font-semibold text-secondary">{strength.label}</span>
+                  </div>
+                  <div className="w-full h-1 bg-surface-hover rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${strength.color}`}
+                      style={{ width: `${strength.percent}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Create Account Button */}
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 px-4 rounded-xl btn-primary font-semibold text-xs tracking-wide disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+              >
+                {loading ? (
+                  <>
+                    <i className="ri-loader-4-line text-base animate-spin" />
+                    <span>Creating Developer Profile...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Create Free Account</span>
+                    <i className="ri-arrow-right-line text-sm" />
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+
+          {/* Switch to Login */}
+          <div className="mt-8 pt-6 border-t border-default text-center">
+            <p className="text-xs text-secondary">
+              Already have an account?{' '}
+              <Link
+                to="/login"
+                className="text-indigo-400 hover:text-indigo-300 font-semibold transition inline-flex items-center gap-1"
+              >
+                Sign in <i className="ri-arrow-right-s-line" />
+              </Link>
+            </p>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="max-w-6xl w-full mx-auto pt-6 text-center text-xs text-muted relative z-10">
+        <p>© 2026 Fusion AI Studio • Enterprise Cloud Engineering Workspace</p>
+      </footer>
+    </div>
+  )
 }
 
 export default Register
