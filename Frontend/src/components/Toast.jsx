@@ -1,53 +1,53 @@
-
 export const ToastContainer = ({ toasts, onDismiss }) => {
-    if (!toasts || toasts.length === 0) return null
+  if (!toasts || toasts.length === 0) return null
 
-    return (
-        <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2 pointer-events-none max-w-sm w-full">
-            {toasts.map((toast) => {
-                const isSuccess = toast.type === 'success'
-                const isError = toast.type === 'error'
-                const isInfo = toast.type === 'info'
+  return (
+    <div
+      aria-live="polite"
+      aria-atomic="true"
+      className="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none max-w-sm w-full"
+    >
+      {toasts.map((toast) => {
+        const isSuccess = toast.type === 'success'
+        const isError = toast.type === 'error'
+        const isWarning = toast.type === 'warning'
 
-                let borderClass = 'border-blue-500/30'
-                let bgClass = 'bg-slate-900/90'
-                let textClass = 'text-blue-400'
-                let icon = 'ri-information-line'
+        let borderClass = 'border-indigo-500/40 bg-indigo-500/5'
+        let icon = 'ri-information-line text-indigo-400'
 
-                if (isSuccess) {
-                    borderClass = 'border-emerald-500/40 shadow-emerald-500/10'
-                    textClass = 'text-emerald-400'
-                    icon = 'ri-checkbox-circle-fill'
-                } else if (isError) {
-                    borderClass = 'border-red-500/40 shadow-red-500/10'
-                    textClass = 'text-red-400'
-                    icon = 'ri-error-warning-fill'
-                } else if (isInfo) {
-                    borderClass = 'border-cyan-500/40 shadow-cyan-500/10'
-                    textClass = 'text-cyan-400'
-                    icon = 'ri-sparkles-fill'
-                }
+        if (isSuccess) {
+          borderClass = 'border-emerald-500/40 bg-emerald-500/5'
+          icon = 'ri-checkbox-circle-fill text-emerald-400'
+        } else if (isError) {
+          borderClass = 'border-red-500/40 bg-red-500/5'
+          icon = 'ri-error-warning-fill text-red-400'
+        } else if (isWarning) {
+          borderClass = 'border-amber-500/40 bg-amber-500/5'
+          icon = 'ri-alert-fill text-amber-400'
+        }
 
-                return (
-                    <div
-                        key={toast.id}
-                        className={`pointer-events-auto flex items-center justify-between gap-3 p-3.5 rounded-2xl border ${borderClass} ${bgClass} backdrop-blur-xl shadow-2xl text-xs text-white transition-all duration-300 animate-fadeIn`}
-                    >
-                        <div className="flex items-center gap-2.5 truncate">
-                            <i className={`${icon} ${textClass} text-base shrink-0`}></i>
-                            <span className="font-medium truncate">{toast.message}</span>
-                        </div>
-                        <button
-                            onClick={() => onDismiss(toast.id)}
-                            className="text-slate-500 hover:text-white transition p-1 shrink-0 cursor-pointer"
-                        >
-                            <i className="ri-close-line text-sm"></i>
-                        </button>
-                    </div>
-                )
-            })}
-        </div>
-    )
+        return (
+          <div
+            key={toast.id}
+            role="status"
+            className={`pointer-events-auto flex items-center justify-between gap-3.5 p-3.5 rounded-2xl border ${borderClass} glass-panel shadow-2xl text-xs text-primary transition-all duration-200 animate-slideUp backdrop-blur-xl`}
+          >
+            <div className="flex items-center gap-2.5 truncate">
+              <i className={`${icon} text-base shrink-0`} />
+              <span className="font-medium text-primary truncate">{toast.message}</span>
+            </div>
+            <button
+              onClick={() => onDismiss(toast.id)}
+              aria-label="Dismiss notification"
+              className="text-muted hover:text-primary transition p-1 shrink-0 cursor-pointer rounded-lg hover:bg-surface-hover"
+            >
+              <i className="ri-close-line text-sm" />
+            </button>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 export default ToastContainer
