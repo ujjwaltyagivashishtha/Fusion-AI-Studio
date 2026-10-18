@@ -6,8 +6,7 @@ import SettingsModal from './SettingsModal'
 import HomeHeader from './home/HomeHeader'
 import HomeBanner from './home/HomeBanner'
 import HomeControls from './home/HomeControls'
-import ProjectGridCard from './home/ProjectGridCard'
-import ProjectListCard from './home/ProjectListCard'
+import HomeProjectList from './home/HomeProjectList'
 import CreateProjectModal from './home/CreateProjectModal'
 import DeleteProjectModal from './home/DeleteProjectModal'
 
@@ -34,11 +33,10 @@ const Home = () => {
   // Filter, View, & Settings state
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedFilterTemplate, setSelectedFilterTemplate] = useState('all')
-  const [viewMode, setViewMode] = useState('grid') // 'grid' | 'list'
+  const [viewMode, setViewMode] = useState('grid')
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
-  // Fetch all projects
   const fetchProjects = async () => {
     try {
       setLoading(true)
@@ -47,10 +45,7 @@ const Home = () => {
       setProjects(res.data.projects || [])
     } catch (err) {
       console.error('Fetch projects error:', err)
-      setError(
-        err.response?.data?.message ||
-        'Unable to load workspaces. Please refresh the page or verify your session.'
-      )
+      setError(err.response?.data?.message || 'Unable to load workspaces.')
     } finally {
       setLoading(false)
     }
@@ -60,23 +55,15 @@ const Home = () => {
     let isMounted = true
     axios.get('/projects/all')
       .then((res) => {
-        if (isMounted) {
-          setProjects(res.data.projects || [])
-        }
+        if (isMounted) setProjects(res.data.projects || [])
       })
       .catch((err) => {
         if (isMounted) {
-          console.error('Fetch projects error:', err)
-          setError(
-            err.response?.data?.message ||
-            'Unable to load workspaces. Please refresh the page or verify your session.'
-          )
+          setError(err.response?.data?.message || 'Unable to load workspaces.')
         }
       })
       .finally(() => {
-        if (isMounted) {
-          setLoading(false)
-        }
+        if (isMounted) setLoading(false)
       })
 
     return () => {
@@ -84,7 +71,6 @@ const Home = () => {
     }
   }, [])
 
-  // Create project
   const createProject = async (e) => {
     e.preventDefault()
     if (!projectName.trim()) return
@@ -109,17 +95,12 @@ const Home = () => {
         })
       }
     } catch (err) {
-      console.error('Create project error:', err)
-      setError(
-        err.response?.data?.message ||
-        'Could not initialize workspace. Please ensure project name is valid.'
-      )
+      setError(err.response?.data?.message || 'Could not initialize workspace.')
     } finally {
       setCreating(false)
     }
   }
 
-  // Delete project
   const confirmDeleteProject = async () => {
     if (!deleteModalProject) return
     try {
@@ -128,14 +109,12 @@ const Home = () => {
       setDeleteModalProject(null)
       fetchProjects()
     } catch (err) {
-      console.error('Delete project error:', err)
       setError(err.response?.data?.message || 'Could not delete workspace.')
     } finally {
       setDeleting(false)
     }
   }
 
-  // Logout handler
   const handleLogout = async () => {
     try {
       await axios.get('/users/logout')
@@ -156,7 +135,6 @@ const Home = () => {
     setSelectedTemplate('node-express')
   }
 
-  // Filter projects by search query and template
   const filteredProjects = projects.filter((p) => {
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -166,7 +144,6 @@ const Home = () => {
     return matchesSearch && matchesTemplate
   })
 
-  // Total collaborators
   const totalCollaborators = projects.reduce((acc, curr) => acc + (curr.users?.length || 0), 0)
 
   return (
@@ -223,78 +200,16 @@ const Home = () => {
             setViewMode={setViewMode}
           />
 
-          {loading && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {[1, 2, 3, 4].map((item) => (
-                <div
-                  key={item}
-                  className="h-48 rounded-2xl glass-card p-5 animate-pulse flex flex-col justify-between"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-surface-hover" />
-                    <div className="space-y-2 flex-grow">
-                      <div className="h-4 bg-surface-hover rounded w-3/4" />
-                      <div className="h-3 bg-surface-hover rounded w-1/2" />
-                    </div>
-                  </div>
-                  <div className="h-3 bg-surface-hover rounded w-full" />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!loading && filteredProjects.length === 0 && (
-            <div className="rounded-3xl border border-dashed border-default glass-panel py-16 px-6 text-center shadow-lg">
-              <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center text-indigo-400">
-                <i className="ri-folder-add-line text-2xl" />
-              </div>
-              <h2 className="text-base font-bold text-primary font-display">
-                {searchQuery || selectedFilterTemplate !== 'all'
-                  ? 'No matching workspaces found'
-                  : 'No workspaces created yet'}
-              </h2>
-              <p className="text-xs text-muted mt-1.5 max-w-sm mx-auto leading-relaxed">
-                {searchQuery || selectedFilterTemplate !== 'all'
-                  ? 'Try adjusting your search keywords or resetting the template filter.'
-                  : 'Launch your first AI-assisted project workspace to begin writing, editing, and running code.'}
-              </p>
-              {!searchQuery && selectedFilterTemplate === 'all' && (
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="mt-6 inline-flex items-center gap-2 px-5 py-3 rounded-xl btn-primary text-xs font-semibold text-white shadow-md transition cursor-pointer"
-                >
-                  <i className="ri-add-line text-sm" />
-                  <span>Create First Workspace</span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {!loading && filteredProjects.length > 0 && viewMode === 'grid' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredProjects.map((project) => (
-                <ProjectGridCard
-                  key={project._id}
-                  project={project}
-                  onNavigate={(p) => navigate(`/project/${p._id}`, { state: { project: p } })}
-                  onDelete={setDeleteModalProject}
-                />
-              ))}
-            </div>
-          )}
-
-          {!loading && filteredProjects.length > 0 && viewMode === 'list' && (
-            <div className="space-y-3">
-              {filteredProjects.map((project) => (
-                <ProjectListCard
-                  key={project._id}
-                  project={project}
-                  onNavigate={(p) => navigate(`/project/${p._id}`, { state: { project: p } })}
-                  onDelete={setDeleteModalProject}
-                />
-              ))}
-            </div>
-          )}
+          <HomeProjectList
+            loading={loading}
+            filteredProjects={filteredProjects}
+            viewMode={viewMode}
+            searchQuery={searchQuery}
+            selectedFilterTemplate={selectedFilterTemplate}
+            onOpenCreateModal={() => setIsModalOpen(true)}
+            onNavigate={(p) => navigate(`/project/${p._id}`, { state: { project: p } })}
+            onDelete={setDeleteModalProject}
+          />
         </section>
       </main>
 
