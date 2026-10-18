@@ -1,0 +1,150 @@
+/* =====================================================================
+   FUSION AI STUDIO — COSMIC GLASSMORPHISM DESIGN SYSTEM & COLOR TOKENS
+   ===================================================================== */
+
+:root,
+.dark {
+  /* Rich Cosmic Dark Palette (Linear & Raycast Inspired) */
+  --bg-app: #030712;
+  --bg-surface: #0B0F19;
+  --bg-surface-elevated: #111827;
+  --bg-surface-hover: #192237;
+  --bg-surface-active: #222F4C;
+  --bg-sidebar: #060A13;
+  --bg-editor: #050814;
+  --bg-activity-bar: #03050B;
+  --bg-input: #090D1A;
+  --bg-overlay: rgba(3, 7, 18, 0.85);
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --text-subtle: #475569;
+  --text-inverse: #030712;
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-accent: rgba(99, 102, 241, 0.55);
+
+  --accent-primary: #6366F1;
+  --accent-primary-hover: #4F46E5;
+  --accent-secondary: #8B5CF6;
+  --accent-violet: #A855F7;
+  --accent-cyan: #06B6D4;
+  --accent-emerald: #10B981;
+
+  --accent-primary-subtle: rgba(99, 102, 241, 0.15);
+  --accent-secondary-subtle: rgba(139, 92, 246, 0.15);
+  --accent-cyan-subtle: rgba(6, 182, 212, 0.15);
+
+  --status-success: #10B981;
+  --status-warning: #F59E0B;
+  --status-error: #EF4444;
+  --status-info: #6366F1;
+
+  /* Tokyo Night / Cyberpunk Pro Code Syntax Highlighting */
+  --syn-bg: #050814;
+  --syn-text: #E2E8F0;
+  --syn-keyword: #C084FC;
+  --syn-function: #38BDF8;
+  --syn-string: #34D399;
+  --syn-number: #FBBF24;
+  --syn-comment: #64748B;
+  --syn-tag: #60A5FA;
+  --syn-attr: #A78BFA;
+  --syn-variable: #F87171;
+  --syn-boolean: #F472B6;
+  --syn-operator: #CBD5E1;
+  --editor-line-active: rgba(99, 102, 241, 0.10);
+  --editor-line-active-border: #6366F1;
+
+  /* Ambient Mesh & Glass Shadows */
+  --ambient-glow-1: rgba(99, 102, 241, 0.16);
+  --ambient-glow-2: rgba(139, 92, 246, 0.12);
+  --ambient-glow-3: rgba(6, 182, 212, 0.10);
+
+  --glass-bg: rgba(11, 15, 25, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 18px -2px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 12px 36px -4px rgba(0, 0, 0, 0.75);
+  --shadow-glow: 0 0 28px -4px rgba(99, 102, 241, 0.35);
+
+  color-scheme: dark;
+}
+
+/* Luminous Pearlescent Light Palette */
+.light {
+  --bg-app: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-surface-elevated: #FFFFFF;
+  --bg-surface-hover: #F1F5F9;
+  --bg-surface-active: #E2E8F0;
+  --bg-sidebar: #F1F5F9;
+  --bg-editor: #FFFFFF;
+  --bg-activity-bar: #E2E8F0;
+  --bg-input: #FFFFFF;
+  --bg-overlay: rgba(15, 23, 42, 0.55);
+
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
+  --text-subtle: #94A3B8;
+  --text-inverse: #F8FAFC;
+
+  --border-subtle: rgba(15, 23, 42, 0.06);
+  --border-default: rgba(15, 23, 42, 0.10);
+  --border-strong: rgba(15, 23, 42, 0.18);
+  --border-accent: rgba(79, 70, 229, 0.45);
+
+  --accent-primary: #4F46E5;
+  --accent-primary-hover: #4338CA;
+  --accent-secondary: #7C3AED;
+  --accent-violet: #9333EA;
+  --accent-cyan: #0891B2;
+  --accent-emerald: #059669;
+
+  --accent-primary-subtle: rgba(79, 70, 229, 0.08);
+  --accent-secondary-subtle: rgba(124, 58, 237, 0.08);
+  --accent-cyan-subtle: rgba(8, 145, 178, 0.08);
+
+  --status-success: #059669;
+  --status-warning: #D97706;
+  --status-error: #DC2626;
+  --status-info: #4F46E5;
+
+  /* VS Code Light Modern Syntax Highlighting */
+  --syn-bg: #FFFFFF;
+  --syn-text: #1E293B;
+  --syn-keyword: #7C3AED;
+  --syn-function: #0284C7;
+  --syn-string: #059669;
+  --syn-number: #D97706;
+  --syn-comment: #94A3B8;
+  --syn-tag: #2563EB;
+  --syn-attr: #4F46E5;
+  --syn-variable: #DC2626;
+  --syn-boolean: #DB2777;
+  --syn-operator: #475569;
+  --editor-line-active: rgba(79, 70, 229, 0.05);
+  --editor-line-active-border: #4F46E5;
+
+  /* Ambient Mesh & Glass Shadows */
+  --ambient-glow-1: rgba(99, 102, 241, 0.08);
+  --ambient-glow-2: rgba(139, 92, 246, 0.06);
+  --ambient-glow-3: rgba(6, 182, 212, 0.05);
+
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(15, 23, 42, 0.08);
+  --glass-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
+
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 16px -2px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 32px -4px rgba(15, 23, 42, 0.12);
+  --shadow-glow: 0 0 24px -3px rgba(79, 70, 229, 0.2);
+
+  color-scheme: light;
+}
