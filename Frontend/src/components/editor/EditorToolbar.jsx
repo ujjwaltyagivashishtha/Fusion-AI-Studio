@@ -6,38 +6,40 @@ const EditorToolbar = ({
   onFormatCode,
   activeWordWrap,
   onToggleWordWrap,
+  showMinimap,
+  onToggleMinimap,
   activeFontSize,
   onChangeFontSize,
   onCopy,
   copied
 }) => {
   return (
-    <div className="h-9 border-b border-default bg-sidebar/85 backdrop-blur-md px-3 flex items-center justify-between text-xs text-secondary shrink-0 select-none">
+    <div className="h-8 border-b border-default bg-sidebar px-3 flex items-center justify-between text-xs text-secondary shrink-0 select-none">
       {/* Breadcrumb Path */}
       <div className="flex items-center gap-1.5 min-w-0 font-mono">
         <span className="text-[11px] text-muted flex items-center gap-1">
-          <i className="ri-folder-3-line text-indigo-400 text-xs" />
-          <span>src</span>
+          <i className="ri-folder-2-line text-xs" />
+          <span>workspace</span>
           <i className="ri-arrow-right-s-line text-muted text-xs" />
         </span>
-        <span className="flex items-center gap-1.5 font-semibold text-primary text-xs truncate">
-          <i className={`${languageInfo.icon} ${languageInfo.color} text-sm`} />
+        <span className="flex items-center gap-1.5 font-medium text-primary text-xs truncate">
+          <i className={`${languageInfo.icon} ${languageInfo.color} text-xs`} />
           <span>{fileName}</span>
         </span>
-        <span className="text-[10px] text-muted font-mono ml-2 hidden sm:inline px-2 py-0.5 rounded-md border border-default bg-surface/60">
+        <span className="text-[10px] text-muted font-mono ml-1.5 hidden sm:inline px-1.5 py-0.2 rounded border border-default bg-surface-elevated">
           {languageInfo.name}
         </span>
       </div>
 
       {/* Editor Actions Toolbar */}
       <div className="flex items-center gap-1 shrink-0">
-        {/* Search Toggle Button */}
+        {/* Search Toggle */}
         <button
           onClick={onToggleSearch}
-          className={`p-1.5 rounded-xl border text-xs transition cursor-pointer ${
+          className={`p-1 rounded border text-xs transition cursor-pointer ${
             isSearchOpen
-              ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400 shadow-sm'
-              : 'border-default bg-surface/70 text-secondary hover:text-primary hover:border-strong'
+              ? 'border-accent bg-surface-elevated text-accent shadow-xs'
+              : 'border-default bg-surface text-secondary hover:text-primary hover:border-strong'
           }`}
           title="Find in file (⌘F / Ctrl+F)"
           aria-label="Find in file"
@@ -48,8 +50,8 @@ const EditorToolbar = ({
         {/* Format Code */}
         <button
           onClick={onFormatCode}
-          className="p-1.5 rounded-xl border border-default bg-surface/70 text-secondary hover:text-primary hover:border-strong text-xs transition cursor-pointer"
-          title="Format Code with Prettier"
+          className="p-1 rounded border border-default bg-surface text-secondary hover:text-primary hover:border-strong text-xs transition cursor-pointer"
+          title="Format Code"
           aria-label="Format Code"
         >
           <i className="ri-magic-line text-xs" />
@@ -58,40 +60,56 @@ const EditorToolbar = ({
         {/* Word Wrap Toggle */}
         <button
           onClick={onToggleWordWrap}
-          className={`p-1.5 rounded-xl border text-xs transition cursor-pointer ${
+          className={`px-1.5 py-0.5 rounded border text-xs transition cursor-pointer flex items-center gap-1 ${
             activeWordWrap
-              ? 'border-indigo-500/50 bg-indigo-500/20 text-indigo-400 shadow-sm'
-              : 'border-default bg-surface/70 text-secondary hover:text-primary'
+              ? 'border-accent bg-surface-elevated text-accent shadow-xs font-medium'
+              : 'border-default bg-surface text-secondary hover:text-primary hover:border-strong'
           }`}
-          title="Toggle Word Wrap"
+          title={activeWordWrap ? 'Disable Word Wrap' : 'Enable Word Wrap'}
           aria-label="Toggle Word Wrap"
         >
           <i className="ri-text-wrap text-xs" />
+          <span className="text-[11px] hidden sm:inline">Wrap</span>
+        </button>
+
+        {/* Code Minimap Toggle */}
+        <button
+          onClick={onToggleMinimap}
+          className={`px-1.5 py-0.5 rounded border text-xs transition cursor-pointer flex items-center gap-1 ${
+            showMinimap
+              ? 'border-accent bg-surface-elevated text-accent shadow-xs font-medium'
+              : 'border-default bg-surface text-secondary hover:text-primary hover:border-strong'
+          }`}
+          title={showMinimap ? 'Hide Code Minimap' : 'Show Code Minimap'}
+          aria-label="Toggle Code Minimap"
+        >
+          <i className="ri-layout-right-line text-xs" />
+          <span className="text-[11px] hidden sm:inline">Map</span>
         </button>
 
         {/* Font Size Adjusters */}
-        <div className="hidden md:flex items-center gap-0.5 border border-default bg-surface/70 rounded-xl p-0.5 text-[10px]">
+        <div className="hidden md:flex items-center gap-0.5 border border-default bg-surface rounded p-0.5 text-[10px] font-mono">
           <button
             onClick={() => onChangeFontSize(Math.max(11, activeFontSize - 1))}
-            className="px-1.5 py-0.5 text-muted hover:text-primary cursor-pointer font-bold"
+            className="px-1 text-muted hover:text-primary cursor-pointer font-bold"
             title="Decrease Font Size"
           >
-            A-
+            -
           </button>
-          <span className="text-secondary font-mono px-1">{activeFontSize}</span>
+          <span className="text-secondary px-0.5">{activeFontSize}px</span>
           <button
             onClick={() => onChangeFontSize(Math.min(18, activeFontSize + 1))}
-            className="px-1.5 py-0.5 text-muted hover:text-primary cursor-pointer font-bold"
+            className="px-1 text-muted hover:text-primary cursor-pointer font-bold"
             title="Increase Font Size"
           >
-            A+
+            +
           </button>
         </div>
 
         {/* Copy Code */}
         <button
           onClick={onCopy}
-          className="flex items-center gap-1 text-[11px] font-semibold text-secondary hover:text-primary transition px-2.5 py-1 rounded-xl border border-default bg-surface/70 hover:border-strong cursor-pointer shadow-sm ml-1"
+          className="flex items-center gap-1 text-[11px] font-medium text-secondary hover:text-primary transition px-2 py-0.5 rounded border border-default bg-surface hover:border-strong cursor-pointer ml-0.5"
           title="Copy code to clipboard"
         >
           <i className={copied ? 'ri-check-line text-emerald-400' : 'ri-file-copy-line text-xs'} />
