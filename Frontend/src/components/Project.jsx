@@ -165,8 +165,10 @@ const Project = () => {
           addToast('All workspace files saved to cloud!', 'success')
         }}
         onRunCode={actions.handleRunCode}
-        isSplitPreview={isSplitPreview}
-        onToggleSplitPreview={() => setIsSplitPreview(!isSplitPreview)}
+        onToggleSplitPreview={() => {
+          if (!isSplitPreview && bottomTab === 'preview') setBottomTab('hidden')
+          setIsSplitPreview(!isSplitPreview)
+        }}
         onOpenInviteModal={actions.handleOpenInviteModal}
         onOpenDetailsModal={() => modalsState.setIsDetailsModalOpen(true)}
         onExportProject={actions.handleExportProject}
@@ -222,7 +224,6 @@ const Project = () => {
           onAddNewFile={() => filesManager.setIsCreatingFile(true)}
           files={filesManager.files}
           onContentChange={filesManager.handleContentChange}
-          collaborators={collaborators}
           editorSettings={editorSettings}
           isSplitPreview={isSplitPreview}
           combinedPreviewDoc={combinedPreviewDoc}
