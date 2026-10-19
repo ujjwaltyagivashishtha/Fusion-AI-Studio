@@ -1,5 +1,3 @@
-import ThemeToggle from '../ThemeToggle.jsx'
-
 const WorkspaceTopbar = ({
   projectName,
   onOpenRenameModal,
@@ -19,133 +17,127 @@ const WorkspaceTopbar = ({
   user
 }) => {
   return (
-    <header className="h-12 border-b border-default bg-surface/90 backdrop-blur-xl px-3 flex items-center justify-between text-xs shrink-0 select-none z-30">
-      {/* Left: Branding & Project Title */}
-      <div className="flex items-center gap-3">
+    <header className="h-11 border-b border-default bg-surface px-3 flex items-center justify-between text-xs shrink-0 select-none z-30">
+      {/* Left: Nav Back, Title & Git Branch */}
+      <div className="flex items-center gap-2.5">
         <button
           onClick={onNavigateHome}
-          className="flex items-center gap-2 hover:opacity-85 transition cursor-pointer"
+          className="w-7 h-7 rounded-md border border-default hover:bg-surface-hover text-secondary hover:text-primary flex items-center justify-center transition cursor-pointer"
           title="Back to Workspaces"
         >
-          <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white text-xs font-bold shadow-md shadow-indigo-500/20">
-            <i className="ri-arrow-left-line text-sm" />
-          </div>
+          <i className="ri-arrow-left-line text-xs" />
         </button>
 
-        <div className="h-4 w-[1px] bg-border-default" />
+        <div className="h-3.5 w-[1px] bg-border-default" />
 
         <div className="flex items-center gap-2">
           <button
             onClick={onOpenRenameModal}
-            className="flex items-center gap-1.5 font-bold text-primary hover:text-indigo-400 transition cursor-pointer max-w-[200px] truncate"
+            className="flex items-center gap-1.5 font-semibold text-primary hover:text-accent-primary transition cursor-pointer max-w-[200px] truncate"
             title="Click to rename workspace"
           >
             <span>{projectName}</span>
-            <i className="ri-edit-line text-xs text-muted" />
+            <i className="ri-pencil-line text-[11px] text-muted" />
           </button>
 
-          <span className="text-[10px] px-2 py-0.5 rounded-full border border-default bg-surface/60 text-secondary font-mono flex items-center gap-1">
-            <i className="ri-git-branch-line text-indigo-400" />
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-default bg-surface-elevated text-cyan flex items-center gap-1">
+            <i className="ri-git-branch-line text-xs" />
             main
           </span>
 
           {/* Cloud Save Status Indicator */}
           <button
             onClick={onSave}
-            title={saveStatus === 'unsaved' ? 'Click to save (⌘S)' : 'All changes saved to MongoDB'}
-            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border flex items-center gap-1 transition cursor-pointer ${
+            title={saveStatus === 'unsaved' ? 'Click to save (⌘S)' : 'All files synced to cloud'}
+            className={`px-2 py-0.5 rounded text-[10px] font-mono border flex items-center gap-1.5 transition cursor-pointer ${
               saveStatus === 'saved'
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                 : saveStatus === 'saving'
-                ? 'bg-amber-500/10 text-amber-400 border-amber-500/25'
-                : 'bg-red-500/10 text-red-400 border-red-500/25 animate-pulse'
+                ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                : 'bg-red-500/10 text-red-400 border-red-500/20'
             }`}
           >
             {saveStatus === 'saving' ? (
               <>
-                <i className="ri-loader-4-line animate-spin" />
+                <i className="ri-loader-4-line animate-spin text-[10px]" />
                 <span>Saving...</span>
               </>
             ) : saveStatus === 'saved' ? (
               <>
-                <i className="ri-cloud-line" />
-                <span>Cloud Sync</span>
+                <span className="status-dot status-dot-success" />
+                <span>Synced</span>
               </>
             ) : (
               <>
-                <i className="ri-alert-line" />
-                <span>Unsaved (⌘S)</span>
+                <span className="status-dot status-dot-error" />
+                <span>Unsaved</span>
               </>
             )}
           </button>
         </div>
       </div>
 
-      {/* Center: Action Controls */}
-      <div className="flex items-center gap-2">
+      {/* Center: Primary Actions */}
+      <div className="flex items-center gap-1.5">
         <button
           onClick={onRunCode}
-          className="btn-primary px-3.5 py-1.5 rounded-xl text-white font-semibold text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer"
-          title="Execute & Run Web Preview (⌘+Enter)"
+          className="btn-primary px-3 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 cursor-pointer shadow-sm"
+          title="Run Code Preview (⌘+Enter)"
         >
-          <i className="ri-play-fill text-sm" />
+          <i className="ri-play-fill text-xs" />
           <span>Run</span>
         </button>
 
         <button
           onClick={onToggleSplitPreview}
-          className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+          className={`px-2.5 py-1 rounded-md border text-xs font-medium flex items-center gap-1.5 transition cursor-pointer ${
             isSplitPreview
-              ? 'btn-primary text-white shadow-sm'
+              ? 'border-accent bg-surface-elevated text-accent shadow-xs'
               : 'border-default bg-surface text-secondary hover:text-primary hover:border-strong'
           }`}
-          title="Toggle Split Code & Container Preview"
+          title="Toggle Split Preview"
         >
-          <i className="ri-layout-column-line text-sm" />
+          <i className="ri-layout-column-line text-xs" />
           <span className="hidden sm:inline">Split Preview</span>
         </button>
 
         <button
           onClick={onOpenInviteModal}
-          className="px-3 py-1.5 rounded-xl border border-default bg-surface hover:bg-surface-hover text-secondary hover:text-primary text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+          className="px-2.5 py-1 rounded-md border border-default bg-surface hover:bg-surface-hover text-secondary hover:text-primary text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
           title="Invite collaborators"
         >
-          <i className="ri-user-add-line text-sm text-indigo-400" />
+          <i className="ri-user-add-line text-xs" />
           <span className="hidden md:inline">Invite</span>
         </button>
 
         <button
           onClick={onOpenDetailsModal}
-          className="p-1.5 rounded-xl border border-default bg-surface hover:bg-surface-hover text-secondary hover:text-primary transition cursor-pointer"
-          title="Workspace Details"
+          className="p-1.5 rounded-md border border-default hover:bg-surface-hover text-secondary hover:text-primary transition cursor-pointer"
+          title="Workspace Info"
         >
-          <i className="ri-information-line text-sm" />
+          <i className="ri-information-line text-xs" />
         </button>
 
         <button
           onClick={onExportProject}
-          className="p-1.5 rounded-xl border border-default bg-surface hover:bg-surface-hover text-secondary hover:text-primary transition cursor-pointer"
-          title="Export Workspace Bundle"
+          className="p-1.5 rounded-md border border-default hover:bg-surface-hover text-secondary hover:text-primary transition cursor-pointer"
+          title="Export Workspace"
         >
-          <i className="ri-download-2-line text-sm" />
+          <i className="ri-download-2-line text-xs" />
         </button>
       </div>
 
-      {/* Right: Online Presences & Utilities */}
-      <div className="flex items-center gap-2.5">
-        {/* Collaborators Avatars */}
-        <div className="hidden lg:flex items-center -space-x-1.5">
+      {/* Right: Presence & Settings */}
+      <div className="flex items-center gap-2">
+        {/* Collaborators */}
+        <div className="hidden lg:flex items-center -space-x-1">
           {collaborators.slice(0, 4).map((c, idx) => {
             const email = typeof c === 'object' ? c.email : c
             const isOnline = onlineUsers.some((ou) => (typeof ou === 'object' ? ou.email === email : ou === email))
             return (
               <div
                 key={idx}
-                className={`relative w-6 h-6 rounded-full border border-surface flex items-center justify-center text-[10px] font-bold text-white uppercase shadow-sm ${
-                  isOnline
-                    ? 'bg-gradient-to-tr from-emerald-600 to-teal-500'
-                    : 'bg-gradient-to-tr from-indigo-600 to-violet-600'
-                }`}
+                className="relative w-5 h-5 rounded-full bg-surface-elevated border border-default text-[9px] font-mono font-bold text-secondary flex items-center justify-center uppercase"
                 title={`${email} (${isOnline ? 'Online' : 'Offline'})`}
               >
                 {(email || 'U')[0]}
@@ -159,28 +151,26 @@ const WorkspaceTopbar = ({
 
         {/* Real-time Socket Indicator */}
         <div
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-mono ${
+          className={`flex items-center gap-1.5 px-2 py-0.5 rounded border text-[10px] font-mono ${
             socketConnected
               ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
               : 'bg-red-500/10 text-red-400 border-red-500/20'
           }`}
-          title={socketConnected ? 'Live WebSocket channel active' : 'Disconnected from channel'}
+          title={socketConnected ? 'Live WebSocket connected' : 'Disconnected from channel'}
         >
-          <span className={`w-1.5 h-1.5 rounded-full ${socketConnected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
-          <span className="hidden sm:inline">{socketConnected ? 'Live Sync' : 'Offline'}</span>
+          <span className={`status-dot ${socketConnected ? 'status-dot-success' : 'status-dot-error'}`} />
+          <span className="hidden sm:inline">{socketConnected ? 'Live' : 'Offline'}</span>
         </div>
-
-        <ThemeToggle />
 
         <button
           onClick={onOpenSettings}
-          className="w-8 h-8 rounded-xl border border-default bg-surface hover:bg-surface-hover text-secondary hover:text-primary flex items-center justify-center transition cursor-pointer"
+          className="w-7 h-7 rounded-md border border-default hover:bg-surface-hover text-secondary hover:text-primary flex items-center justify-center transition cursor-pointer text-xs"
           title="Studio Preferences"
         >
-          <i className="ri-settings-4-line text-sm" />
+          <i className="ri-settings-3-line" />
         </button>
 
-        <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+        <div className="w-6 h-6 rounded-md border border-default bg-surface-elevated text-primary text-[10px] font-bold flex items-center justify-center font-mono shadow-xs">
           {user?.email ? user.email[0].toUpperCase() : 'U'}
         </div>
       </div>
