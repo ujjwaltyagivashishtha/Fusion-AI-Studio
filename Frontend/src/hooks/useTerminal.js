@@ -48,7 +48,7 @@ export const useTerminal = ({
         '  cat <file>      - Print file content to terminal',
         '  touch <file>    - Create a new file',
         '  rm <file>       - Remove a file',
-        '  ai <prompt>     - Prompt Fusion AI Copilot directly',
+        '  ai <prompt>     - Prompt Nexus agent directly',
         '  export          - Download project files bundle',
         '  clear           - Clear terminal log output'
       )
