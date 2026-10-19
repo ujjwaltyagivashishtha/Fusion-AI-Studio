@@ -12,21 +12,44 @@ const HomeProjectList = ({
   onDelete
 }) => {
   if (loading) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((item) => (
-          <div
-            key={item}
-            className="h-48 rounded-2xl glass-card p-5 animate-pulse flex flex-col justify-between"
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-surface-hover" />
-              <div className="space-y-2 flex-grow">
-                <div className="h-4 bg-surface-hover rounded w-3/4" />
-                <div className="h-3 bg-surface-hover rounded w-1/2" />
+    if (viewMode === 'grid') {
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[1, 2, 3].map((item) => (
+            <div
+              key={item}
+              className="h-44 rounded-2xl border border-default bg-surface p-5 animate-pulse flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 rounded-xl bg-surface-elevated" />
+                  <div className="w-14 h-5 rounded-full bg-surface-elevated" />
+                </div>
+                <div className="h-5 w-2/3 bg-surface-elevated rounded mt-4" />
+                <div className="h-3.5 w-4/5 bg-surface-elevated rounded mt-2" />
+              </div>
+              <div className="pt-3.5 border-t border-default/60 flex justify-between items-center">
+                <div className="h-3 w-20 bg-surface-elevated rounded" />
+                <div className="h-3 w-12 bg-surface-elevated rounded" />
               </div>
             </div>
-            <div className="h-3 bg-surface-hover rounded w-full" />
+          ))}
+        </div>
+      )
+    }
+
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3].map((item) => (
+          <div
+            key={item}
+            className="h-16 rounded-lg border border-default bg-surface p-4 animate-pulse flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-5 bg-surface-elevated rounded" />
+              <div className="w-40 h-4 bg-surface-elevated rounded" />
+            </div>
+            <div className="w-20 h-4 bg-surface-elevated rounded" />
           </div>
         ))}
       </div>
@@ -35,27 +58,28 @@ const HomeProjectList = ({
 
   if (filteredProjects.length === 0) {
     return (
-      <div className="rounded-3xl border border-dashed border-default glass-panel py-16 px-6 text-center shadow-lg">
-        <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center text-indigo-400">
-          <i className="ri-folder-add-line text-2xl" />
+      <div className="py-16 text-center">
+        <div className="w-10 h-10 mx-auto mb-3 rounded-lg bg-surface-elevated border border-default flex items-center justify-center text-muted text-base">
+          <i className="ri-folder-line" />
         </div>
-        <h2 className="text-base font-bold text-primary font-display">
+        <h3 className="text-sm font-medium text-primary">
           {searchQuery || selectedFilterTemplate !== 'all'
-            ? 'No matching workspaces found'
-            : 'No workspaces created yet'}
-        </h2>
-        <p className="text-xs text-muted mt-1.5 max-w-sm mx-auto leading-relaxed">
+            ? 'No matching workspaces'
+            : 'No workspaces yet'}
+        </h3>
+        <p className="text-xs text-secondary mt-1 max-w-sm mx-auto">
           {searchQuery || selectedFilterTemplate !== 'all'
-            ? 'Try adjusting your search keywords or resetting the template filter.'
-            : 'Launch your first AI-assisted project workspace to begin writing, editing, and running code.'}
+            ? 'Try adjusting your search keywords or reset the filter.'
+            : 'Create your first workspace to start building your next application.'}
         </p>
         {!searchQuery && selectedFilterTemplate === 'all' && (
           <button
-            onClick={onOpenCreateModal}
-            className="mt-6 inline-flex items-center gap-2 px-5 py-3 rounded-xl btn-primary text-xs font-semibold text-white shadow-md transition cursor-pointer"
+            type="button"
+            onClick={() => onOpenCreateModal('node-express')}
+            className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-accent text-accent-contrast text-xs font-medium hover:opacity-90 transition cursor-pointer shadow-xs"
           >
             <i className="ri-add-line text-sm" />
-            <span>Create First Workspace</span>
+            <span>New workspace</span>
           </button>
         )}
       </div>
@@ -64,7 +88,7 @@ const HomeProjectList = ({
 
   if (viewMode === 'grid') {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {filteredProjects.map((project) => (
           <ProjectGridCard
             key={project._id}
@@ -78,7 +102,7 @@ const HomeProjectList = ({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {filteredProjects.map((project) => (
         <ProjectListCard
           key={project._id}
