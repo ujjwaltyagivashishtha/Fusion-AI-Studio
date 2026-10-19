@@ -1,30 +1,38 @@
 export const TEMPLATE_OPTIONS = [
   {
     id: 'node-express',
-    name: 'Node.js Express API',
+    name: 'Node.js Express',
+    tag: 'Node.js',
     icon: 'ri-nodejs-line',
-    badgeColor: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-    desc: 'Express microservice with live container preview'
+    file: 'app.js',
+    fileIcon: 'ri-javascript-line text-amber-400',
+    desc: 'Express application server with REST API routes'
   },
   {
     id: 'react-vite',
-    name: 'React + Vite Application',
+    name: 'React + Vite',
+    tag: 'React',
     icon: 'ri-reactjs-line',
-    badgeColor: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',
-    desc: 'Modern React web application with lightning HMR'
+    file: 'App.jsx',
+    fileIcon: 'ri-reactjs-line text-cyan-400',
+    desc: 'Modern React 19 application with fast Vite HMR'
   },
   {
     id: 'python-flask',
-    name: 'Python Flask API',
+    name: 'Python Flask',
+    tag: 'Python',
     icon: 'ri-code-s-slash-line',
-    badgeColor: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-    desc: 'Lightweight Python microservice with REST endpoints'
+    file: 'app.py',
+    fileIcon: 'ri-code-s-slash-line text-blue-400',
+    desc: 'Python microservice with Flask REST endpoints'
   },
   {
     id: 'vanilla-web',
-    name: 'Vanilla Canvas & Web',
+    name: 'Vanilla Web',
+    tag: 'Vanilla',
     icon: 'ri-html5-line',
-    badgeColor: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',
+    file: 'index.html',
+    fileIcon: 'ri-html5-line text-orange-400',
     desc: 'HTML5, modern CSS3, and JavaScript live canvas'
   }
 ]
@@ -34,8 +42,7 @@ export const formatRelativeTime = (dateString) => {
   const now = new Date()
   const past = new Date(dateString)
   const diffMs = now - past
-  const diffSec = Math.floor(diffMs / 1000)
-  const diffMin = Math.floor(diffSec / 60)
+  const diffMin = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMin / 60)
   const diffDays = Math.floor(diffHours / 24)
 
