@@ -48,6 +48,10 @@ app.listen(PORT, () => {
 </body>
 </html>`,
     "style.css": `/* Workspace Global Stylesheet */
+* {
+  box-sizing: border-box;
+}
+
 :root {
   --primary: #3b82f6;
   --bg-dark: #080c14;
@@ -55,21 +59,23 @@ app.listen(PORT, () => {
 
 body {
   margin: 0;
-  padding: 2rem;
+  padding: 1.5rem;
   background-color: var(--bg-dark);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: #f8fafc;
+  min-height: 100vh;
+  overflow-y: auto;
 }
 
 .card {
-  background: rgba(30, 41, 59, 0.45);
-  padding: 2rem;
-  border-radius: 1.25rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(30, 41, 59, 0.55);
+  padding: 1.75rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.10);
   backdrop-filter: blur(16px);
   box-shadow: 0 20px 40px -15px rgba(0,0,0,0.6);
   max-width: 600px;
-  margin: 2rem auto;
+  margin: 0 auto;
 }
 
 .header {
@@ -345,8 +351,8 @@ export const createProject = async ({
       messages: [
         {
           sender: "ai",
-          senderName: "Fusion AI",
-          text: `Welcome to **${name}**! I'm your AI Copilot. Ask me to generate code, refactor functions, write test suites, or explain architecture.`
+          senderName: "Nexus",
+          text: `Welcome to **${name}**! I'm Nexus, your engineering agent inside Fusion AI Studio. Ask me to generate code, refactor functions, write test suites, or explain architecture.`
         }
       ]
     });

@@ -162,8 +162,8 @@ export const detectIntent = (prompt = "", mode = "copilot") => {
   }
 
   // 6. Explicit code generation commands
-  const hasCodeRequestVerb = /^(give me|show me|write|generate|create|build|scaffold|implement|add|make)\s+(me\s+)?(a\s+|an\s+|the\s+)?(code|model|schema|api|endpoint|route|middleware|test|component|function|service|script|file)/i.test(p) ||
-    /(?:give me|show me|write|generate|create|build|scaffold|implement)\s+.*(?:code|model|schema|api|endpoint|route|middleware|function|service)/i.test(p) ||
+  const hasCodeRequestVerb = /^(give me|show me|write|generate|create|build|scaffold|implement|add|make)\s+(me\s+)?(a\s+|an\s+|the\s+)?(code|model|schema|api|endpoint|route|middleware|test|component|function|service|script|file|server|app|backend)/i.test(p) ||
+    /(?:give me|show me|write|generate|create|build|scaffold|implement)\s+.*(?:code|model|schema|api|endpoint|route|middleware|function|service|server|app)/i.test(p) ||
     /^(give me|write|create|generate)\s+.*(?:using|with|in)\s+(mongoose|express|node|mongodb|react|jwt)/i.test(p);
 
   // 7. Conceptual & educational questions ("What is Mongoose?", "How does JWT work?", "Difference between SQL and NoSQL")
@@ -178,11 +178,11 @@ export const detectIntent = (prompt = "", mode = "copilot") => {
     return "CODE_GENERATION";
   }
 
-  if (isQuestion && !/\b(code|model|file|script|function|route|middleware)\b/i.test(p)) {
+  if (isQuestion && !/\b(code|model|file|script|function|route|middleware|server|app)\b/i.test(p)) {
     return "CONCEPTUAL";
   }
 
-  if (/\b(model|schema|route|api|endpoint|middleware|component|controller)\b/i.test(p)) {
+  if (/\b(model|schema|route|api|endpoint|middleware|component|controller|server|express)\b/i.test(p)) {
     return "CODE_GENERATION";
   }
 
@@ -215,18 +215,42 @@ export const detectTargetFileAndAction = ({ prompt = "", activeFile = "app.js", 
     return { targetFile: parsedTarget, action };
   }
 
-  // Check if prompt explicitly requested a file name
-  const promptFileMatch = prompt.match(/(?:in|to|file|create|named|for)\s+[`"']?([a-zA-Z0-9_\-./\\]+\.(?:js|jsx|ts|tsx|py|html|css|json|env|md))[`"']?/i);
+  // Check if prompt explicitly requested a file name with supported extensions
+  const promptFileMatch = prompt.match(/(?:in|to|file|create|named|for)\s+[`"']?([a-zA-Z0-9_\-./\\]+\.(?:js|jsx|ts|tsx|py|java|cpp|hpp|c|cs|go|rs|sql|html|css|json|env|md|sh))[`"']?/i);
   if (promptFileMatch && promptFileMatch[1]) {
     const explicitFile = promptFileMatch[1].trim().replace(/^[./\\]+/, "");
     const action = explicitFile === activeFile ? "replace" : "create";
     return { targetFile: explicitFile, action };
   }
 
+  // Multi-language request detection (Python, Java, C++, SQL, Go, Rust)
+  if (pLower.includes("python") && !activeFile.endsWith(".py")) {
+    return { targetFile: "main.py", action: "create" };
+  }
+  if (pLower.includes("java") && !pLower.includes("javascript") && !activeFile.endsWith(".java")) {
+    return { targetFile: "App.java", action: "create" };
+  }
+  if ((pLower.includes("sql") || pLower.includes("postgres") || pLower.includes("mysql") || pLower.includes("sqlite")) && !activeFile.endsWith(".sql")) {
+    return { targetFile: "schema.sql", action: "create" };
+  }
+  if ((pLower.includes("c++") || pLower.includes("cpp")) && !activeFile.endsWith(".cpp")) {
+    return { targetFile: "main.cpp", action: "create" };
+  }
+  if (pLower.includes("rust") && !activeFile.endsWith(".rs")) {
+    return { targetFile: "main.rs", action: "create" };
+  }
+
   // Mode: Unit Tests
   if (resolvedIntent === "TEST_GENERATION" || pLower.includes("unit test") || pLower.includes("vitest") || pLower.includes("jest")) {
     const testFileName = activeFile.replace(/\.([a-z0-9]+)$/i, ".test.$1");
     return { targetFile: testFileName, action: "create" };
+  }
+
+  // Express Server Initialization
+  if (resolvedIntent === "CODE_GENERATION" && (pLower.includes("express server") || pLower.includes("create a express") || pLower.includes("express app"))) {
+    const targetFile = activeFile.endsWith(".js") ? activeFile : "app.js";
+    const action = activeFile === targetFile ? "replace" : "create";
+    return { targetFile, action };
   }
 
   // Mongoose Schema / Model
@@ -399,7 +423,7 @@ In modern full-stack development, software architecture relies on clear separati
   // ==========================================
   if (intent === "CONVERSATION") {
     return {
-      reply: `👋 Hello! I am **Fusion AI Copilot**, your engineering assistant inside Fusion AI Studio.
+      reply: `👋 Hello! I am **Nexus**, your engineering agent inside Fusion AI Studio.
 
 I can help you:
 - **Build Features**: Generate Mongoose models, Express routers, authentication middleware, or React components.
@@ -1080,6 +1104,87 @@ Click **Create ${targetFile}** to add this route file.`,
         errorDetails: errorInfo
       };
     }
+
+    // 7D: Express Server Initializer
+    if (pLower.includes("express") || pLower.includes("server")) {
+      const targetFile = activeFile.endsWith(".js") ? activeFile : "app.js";
+      const code = isEsm
+        ? `import express from "express";
+import cors from "cors";
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Standard middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  return res.status(200).json({ status: "healthy", timestamp: new Date().toISOString() });
+});
+
+// Root route
+app.get("/", (req, res) => {
+  return res.status(200).json({ message: "Fusion AI Studio Express Server is running" });
+});
+
+app.listen(PORT, () => {
+  console.log(\`Server is running on port \${PORT}\`);
+});
+
+export default app;
+`
+        : `const express = require("express");
+const cors = require("cors");
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Standard middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  return res.status(200).json({ status: "healthy", timestamp: new Date().toISOString() });
+});
+
+// Root route
+app.get("/", (req, res) => {
+  return res.status(200).json({ message: "Fusion AI Studio Express Server is running" });
+});
+
+app.listen(PORT, () => {
+  console.log(\`Server is running on port \${PORT}\`);
+});
+
+module.exports = app;
+`;
+
+      return {
+        reply: `### 🚀 Express Server Initializer
+
+Here is a production-ready Express server with JSON body parsing, CORS middleware, health check endpoint, and server startup:
+
+- **Target File**: \`${targetFile}\`
+- **Endpoints**: \`GET /\`, \`GET /health\`
+- **Configuration**: Port \`process.env.PORT || 3000\`
+
+\`\`\`javascript
+${code}
+\`\`\`
+
+Click **Apply to ${targetFile}** or **Save New File** to write this server to your workspace.`,
+        suggestedCode: code,
+        targetFile,
+        action: "create",
+        source: "fallback",
+        errorDetails: errorInfo
+      };
+    }
   }
 
   // ==========================================
@@ -1093,17 +1198,19 @@ I received your prompt: **"${prompt}"**
 
 However, the Gemini AI engine is currently unavailable (${reasonText}).
 
-To ensure reliability, Fusion AI Copilot does not return synthetic or unrelated placeholder code for arbitrary custom tasks when live AI generation is offline.
+To ensure reliability, Nexus does not return synthetic or unrelated placeholder code for arbitrary custom tasks when live AI generation is offline.
 
 **To resolve:**
 1. Check that \`GOOGLE_AI_KEY\` in \`Backend/.env\` is valid and has active quota.
-2. Ensure model \`gemini-3.5-flash\` is enabled for your Google AI Studio project.
-3. Offline templates are available for: **Mongoose models**, **JWT auth middleware**, **Express CRUD routes**, **Unit tests**, and **Conceptual explanations**.`,
+2. Ensure model \`gemini-3.8-flash\` or \`gemini-3.5-flash\` is enabled for your Google AI Studio project.
+3. Offline templates are available for: **Express server**, **Mongoose models**, **JWT auth middleware**, **Express CRUD routes**, **Unit tests**, and **Conceptual explanations**.`,
     suggestedCode: null,
     targetFile: null,
     action: "explain",
     source: "fallback",
-    errorDetails: errorInfo
+    isError: true,
+    errorDetails: errorInfo,
+    retryPrompt: prompt
   };
 };
 
@@ -1133,9 +1240,9 @@ export const processAiPrompt = async ({
       try {
         const model = genAI.getGenerativeModel({
           model: modelName,
-          systemInstruction: `# SYSTEM PROMPT — FUSION AI COPILOT
+          systemInstruction: `# SYSTEM PROMPT — NEXUS AGENT IN FUSION AI STUDIO
 
-You are **Fusion AI Copilot**, a senior full-stack AI engineer inside **Fusion AI Studio Cloud IDE**.
+You are **Nexus**, a senior full-stack AI engineer inside **Fusion AI Studio Cloud IDE**.
 
 ## INTENT-AWARE RESPONSE INSTRUCTIONS:
 1. **Conceptual & Educational Questions** (e.g. "What is...", "How does...", "Difference between..."):
@@ -1170,21 +1277,56 @@ You are **Fusion AI Copilot**, a senior full-stack AI engineer inside **Fusion A
         }
         contextPrompt += `\nDetected Intent: ${intent}\nMode: ${mode}\nUser Request: ${prompt}`;
 
-        // Only feed real user prompts and AI replies into Gemini's conversation history
-        const cleanHistory = (Array.isArray(history) ? history : [])
-          .filter((msg) => msg && (msg.sender === "user" || msg.sender === "ai" || msg.sender === "model"))
-          .slice(-6)
-          .map((msg) => ({
-            role: msg.sender === "user" ? "user" : "model",
-            parts: [{ text: msg.text || "" }]
-          }));
+        // Sanitize history strictly according to Gemini API requirements:
+        // 1. Must start with a user turn
+        // 2. Must strictly alternate user -> model -> user
+        // 3. Must not have empty text parts
+        // 4. Must not include offline error cards
+        const rawHistory = Array.isArray(history) ? history : [];
+        const cleanHistory = [];
+        let expectingUser = true;
 
-        const chatSession = model.startChat({
-          history: cleanHistory
-        });
+        for (const msg of rawHistory) {
+          if (!msg || typeof msg.text !== "string") continue;
+          const text = msg.text.trim();
+          if (!text) continue;
+          if (text.includes("Live AI Service Offline") || text.includes("AI Service Error") || text.includes("AI Service Advisory")) {
+            continue;
+          }
 
-        const result = await chatSession.sendMessage(contextPrompt);
-        const text = result.response.text();
+          const role = msg.sender === "user" ? "user" : "model";
+
+          if (expectingUser) {
+            if (role === "user") {
+              cleanHistory.push({ role: "user", parts: [{ text }] });
+              expectingUser = false;
+            }
+          } else {
+            if (role === "model") {
+              cleanHistory.push({ role: "model", parts: [{ text }] });
+              expectingUser = true;
+            } else if (role === "user" && cleanHistory.length > 0) {
+              cleanHistory[cleanHistory.length - 1].parts[0].text += `\n${text}`;
+            }
+          }
+        }
+
+        // If history ends with a user turn, pop it so sendMessage can provide the active prompt
+        if (cleanHistory.length > 0 && cleanHistory[cleanHistory.length - 1].role === "user") {
+          cleanHistory.pop();
+        }
+
+        let text = null;
+        try {
+          const chatSession = model.startChat({ history: cleanHistory });
+          const result = await chatSession.sendMessage(contextPrompt);
+          text = result.response.text();
+        } catch (chatErr) {
+          console.warn(`[Gemini ChatSession] Model "${modelName}" multi-turn chat error (${chatErr.message}). Retrying with direct generateContent...`);
+          const directResult = await model.generateContent(contextPrompt);
+          text = directResult.response.text();
+        }
+
         const codeMeta = extractCodeBlockWithMeta(text);
 
         // Routing based on Intent
