@@ -13,13 +13,10 @@ const SidebarGit = ({ files, saveStatus, onCommitPush }) => {
   const modifiedCount = saveStatus === 'unsaved' ? Object.keys(files).length : 0
 
   return (
-    <div className="flex flex-col h-full overflow-hidden select-none p-3 space-y-4">
-      <div className="flex items-center justify-between text-xs font-bold text-muted uppercase tracking-wider">
-        <span className="flex items-center gap-1.5">
-          <i className="ri-git-branch-line text-indigo-400" />
-          <span>Source Control</span>
-        </span>
-        <span className="text-[10px] px-2 py-0.5 rounded-full border border-default bg-surface/50 text-secondary font-mono">
+    <div className="flex flex-col h-full overflow-hidden select-none p-2.5 space-y-3 bg-sidebar text-xs">
+      <div className="flex items-center justify-between text-[11px] font-mono text-muted uppercase tracking-wider">
+        <span className="font-semibold text-secondary">Source Control</span>
+        <span className="text-[10px] px-1.5 py-0.2 rounded border border-default bg-surface-elevated text-cyan font-mono">
           main
         </span>
       </div>
@@ -30,36 +27,36 @@ const SidebarGit = ({ files, saveStatus, onCommitPush }) => {
           rows={3}
           value={commitMessage}
           onChange={(e) => setCommitMessage(e.target.value)}
-          placeholder="Message (⌘Enter to commit)..."
-          className="w-full p-2.5 rounded-xl border border-default bg-input text-xs text-primary placeholder-muted outline-none focus:border-indigo-500 font-sans resize-none"
+          placeholder="Commit message (⌘Enter)..."
+          className="input w-full p-2 rounded text-xs text-primary placeholder-muted font-sans resize-none"
         />
         <button
           type="submit"
           disabled={!commitMessage.trim()}
-          className="w-full py-2 rounded-xl btn-primary disabled:opacity-50 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm"
+          className="w-full py-1.5 rounded btn-primary disabled:opacity-40 text-xs font-medium flex items-center justify-center gap-1.5 transition cursor-pointer"
         >
-          <i className="ri-git-commit-line text-sm" />
+          <i className="ri-git-commit-line text-xs" />
           <span>Commit & Push</span>
         </button>
       </form>
 
       {/* Changes Section */}
-      <div className="space-y-2 flex-grow overflow-y-auto">
-        <div className="flex items-center justify-between text-xs font-semibold text-secondary">
-          <span>Changes</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-hover text-muted">
-            {modifiedCount}
+      <div className="space-y-1.5 flex-grow overflow-y-auto">
+        <div className="flex items-center justify-between text-xs font-medium text-secondary">
+          <span>Staged / Tracked</span>
+          <span className="text-[10px] px-1.5 rounded border border-default bg-surface-elevated font-mono text-muted">
+            {modifiedCount} modified
           </span>
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           {Object.keys(files).map((f) => (
             <div
               key={f}
-              className="flex items-center justify-between px-2 py-1 rounded-lg text-xs font-mono text-secondary hover:bg-surface-hover"
+              className="flex items-center justify-between px-2 py-1 rounded text-xs font-mono text-secondary hover:bg-surface-hover hover:text-primary transition"
             >
               <span className="truncate">{f}</span>
-              <span className="text-[10px] text-emerald-400 font-bold uppercase">
+              <span className={`text-[10px] font-mono font-medium ${saveStatus === 'saved' ? 'text-muted' : 'text-amber-400'}`}>
                 {saveStatus === 'saved' ? 'synced' : 'M'}
               </span>
             </div>

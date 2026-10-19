@@ -12,13 +12,13 @@ const RenameModal = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="rename-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="w-full max-w-sm rounded-3xl border border-white/10 glass-panel shadow-2xl p-6 relative overflow-hidden animate-slideDown">
-        <h2 id="rename-modal-title" className="text-base font-bold text-primary mb-1">
+      <div className="w-full max-w-sm rounded-lg border border-default bg-surface shadow-xl p-5 relative overflow-hidden animate-slideDown">
+        <h2 id="rename-modal-title" className="text-sm font-semibold text-primary mb-1">
           Rename Workspace
         </h2>
         <p className="text-xs text-muted mb-4">Update the workspace display name</p>
@@ -31,21 +31,21 @@ const RenameModal = ({
             value={projectNameInput}
             onChange={(e) => setProjectNameInput(e.target.value)}
             placeholder="Workspace name..."
-            className="w-full px-3 py-2 rounded-xl border border-default bg-input text-xs text-primary placeholder-muted outline-none focus:border-indigo-500 font-sans shadow-inner"
+            className="input w-full px-3 py-2 text-xs font-sans"
           />
 
-          <div className="flex items-center justify-end gap-2 pt-2">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-default">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-default text-xs font-semibold text-secondary hover:bg-surface-hover transition cursor-pointer"
+              className="btn btn-sm btn-secondary text-xs"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!projectNameInput.trim()}
-              className="px-5 py-2 rounded-xl btn-primary disabled:opacity-50 text-xs font-semibold text-white transition shadow-md cursor-pointer"
+              className="btn btn-sm btn-primary text-xs"
             >
               Save
             </button>
