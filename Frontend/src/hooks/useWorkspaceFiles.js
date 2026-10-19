@@ -112,7 +112,7 @@ export const useWorkspaceFiles = ({
     })
   }
 
-  const handleApplyAiCode = (code, targetFile) => {
+  const handleApplyAiCode = async (code, targetFile) => {
     const fileToUpdate = targetFile || activeFile
     if (fileToUpdate === activeFile) {
       handleContentChange(code)
@@ -123,20 +123,28 @@ export const useWorkspaceFiles = ({
       setOpenFiles((prev) => [...prev, fileToUpdate])
     }
     setActiveFile(fileToUpdate)
-    saveFilesToBackend(updated)
-    addToast(`Applied code directly to ${fileToUpdate}!`, 'success')
+    try {
+      await saveFilesToBackend(updated)
+      addToast(`Applied code directly to ${fileToUpdate}!`, 'success')
+    } catch {
+      addToast(`Updated ${fileToUpdate} locally (cloud sync pending)`, 'warning')
+    }
   }
 
-  const handleCreateAiFile = (fileName, code) => {
+  const handleCreateAiFile = async (fileName, code) => {
     const updated = { ...files, [fileName]: code }
     setFiles(updated)
     setOpenFiles([...openFiles, fileName])
     setActiveFile(fileName)
-    saveFilesToBackend(updated)
-    if (socketConnected && targetProjectId) {
-      sendMessage('file-create', { fileName, content: code })
+    try {
+      await saveFilesToBackend(updated)
+      if (socketConnected && targetProjectId) {
+        sendMessage('file-create', { fileName, content: code })
+      }
+      addToast(`Created new file ${fileName} with AI code!`, 'success')
+    } catch {
+      addToast(`Created ${fileName} locally (cloud sync pending)`, 'warning')
     }
-    addToast(`Created new file ${fileName} with AI code!`, 'success')
   }
 
   return {

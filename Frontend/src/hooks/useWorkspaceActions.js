@@ -125,13 +125,15 @@ export const useWorkspaceActions = ({
     }
   }
 
-  const handleSendPrompt = async (e) => {
+  const handleSendPrompt = async (e, retryPrompt = null) => {
     e?.preventDefault()
-    if (!copilotManager.prompt.trim() || (rightPanelTab === 'copilot' && copilotManager.aiLoading)) return
+    const userMsg = (typeof retryPrompt === 'string' ? retryPrompt : copilotManager.prompt).trim()
+    if (!userMsg || (rightPanelTab === 'copilot' && copilotManager.aiLoading)) return
 
-    const userMsg = copilotManager.prompt.trim()
     const currentId = project._id || targetProjectId
-    copilotManager.setPrompt('')
+    if (!retryPrompt) {
+      copilotManager.setPrompt('')
+    }
 
     if (rightPanelTab === 'chat') {
       socketManager.setTeamMessages((prev) => [
@@ -157,6 +159,11 @@ export const useWorkspaceActions = ({
         history: copilotManager.aiMessages.slice(-6)
       })
       const data = res.data
+      const isError = Boolean(
+        data.isError ||
+        (data.source === 'fallback' && !data.suggestedCode && data.reply?.includes('Offline'))
+      )
+
       copilotManager.setAiMessages((prev) => [
         ...prev,
         {
@@ -164,7 +171,11 @@ export const useWorkspaceActions = ({
           text: data.reply || 'AI recommendation completed.',
           suggestedCode: data.suggestedCode || null,
           targetFile: data.targetFile || null,
-          action: data.action || 'explain'
+          action: data.action || 'explain',
+          isError,
+          errorDetails: data.errorDetails || null,
+          retryPrompt: isError ? userMsg : null,
+          source: data.source || 'gemini'
         }
       ])
       terminalManager.setTerminalHistory((prev) => [
@@ -175,7 +186,16 @@ export const useWorkspaceActions = ({
       ])
     } catch (err) {
       const errMsg = err.response?.data?.message || 'AI assistant encountered an error.'
-      copilotManager.setAiMessages((prev) => [...prev, { sender: 'ai', text: `⚠️ **AI Service Error**: ${errMsg}` }])
+      copilotManager.setAiMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `### ⚠️ AI Service Error\n\n${errMsg}`,
+          isError: true,
+          retryPrompt: userMsg,
+          source: 'error'
+        }
+      ])
       addToast('AI prompt failed', 'error')
     } finally {
       copilotManager.setAiLoading(false)
