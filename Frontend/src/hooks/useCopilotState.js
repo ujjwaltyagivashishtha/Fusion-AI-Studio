@@ -7,7 +7,7 @@ export const useCopilotState = ({ teamMessages, rightPanelTab }) => {
   const [aiMessages, setAiMessages] = useState([
     {
       sender: 'ai',
-      text: `👋 **Fusion AI Copilot** is ready!\n\nI have indexed your workspace files. Choose an assistance mode (**Auto**, **Refactor**, **Debug**, or **Tests**) or prompt me directly below.`
+      text: `👋 **Nexus** is ready!\n\nI am your engineering agent inside Fusion AI Studio. I have indexed your workspace files. Choose an assistance mode (**Auto**, **Refactor**, **Debug**, or **Tests**) or prompt me directly below.`
     }
   ])
   const messagesEndRef = useRef(null)
