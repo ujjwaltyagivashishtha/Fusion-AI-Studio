@@ -32,11 +32,11 @@ app.listen(PORT, () => {
 </head>
 <body>
   <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <div class="header">
       <h1>🚀 Fusion Live Web Container</h1>
       <span class="badge">● Online</span>
     </div>
-    <p style="color: #94A3B8; line-height: 1.6;">
+    <p class="description">
       Your full-stack application preview is executing and live-rendering inside our isolated cloud environment.
     </p>
     <button class="btn" onclick="alert('Container interaction verified! All cloud systems normal.')">Test Cloud Interaction</button>
@@ -44,6 +44,10 @@ app.listen(PORT, () => {
 </body>
 </html>`,
   'style.css': `/* Workspace Global Stylesheet */
+* {
+  box-sizing: border-box;
+}
+
 :root {
   --primary: #3b82f6;
   --bg-dark: #080c14;
@@ -53,26 +57,42 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
   background: #080C14; 
   color: #F8FAFC; 
-  padding: 2.5rem; 
+  padding: 1.5rem; 
   margin: 0;
+  min-height: 100vh;
+  overflow-y: auto;
 }
+
 .card { 
-  background: rgba(30, 41, 59, 0.45); 
-  padding: 2rem; 
-  border-radius: 1.25rem; 
-  border: 1px solid rgba(255, 255, 255, 0.08); 
+  background: rgba(30, 41, 59, 0.55); 
+  padding: 1.75rem; 
+  border-radius: 1rem; 
+  border: 1px solid rgba(255, 255, 255, 0.10); 
   backdrop-filter: blur(16px);
   box-shadow: 0 20px 40px -15px rgba(0,0,0,0.6);
-  max-width: 600px;
+  max-width: 600px; 
   margin: 0 auto;
 }
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 h1 { 
   color: #60A5FA; 
-  margin-top: 0; 
-  font-size: 1.5rem;
+  margin: 0; 
+  font-size: 1.35rem;
+  line-height: 1.3;
 }
+
 .badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   font-size: 0.75rem;
@@ -80,19 +100,29 @@ h1 {
   background: rgba(16, 185, 129, 0.15);
   color: #34D399;
   border: 1px solid rgba(16, 185, 129, 0.3);
+  white-space: nowrap;
 }
+
+.description {
+  color: #94A3B8;
+  line-height: 1.6;
+  margin: 0 0 1.25rem 0;
+  font-size: 0.95rem;
+}
+
 .btn {
-  margin-top: 1.5rem;
   padding: 0.75rem 1.5rem;
   border-radius: 0.75rem;
   background: linear-gradient(135deg, #2563EB, #4F46E5);
   color: white;
   border: none;
   font-weight: 600;
+  font-size: 0.9rem;
   cursor: pointer;
   box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.4);
   transition: transform 0.15s ease;
 }
+
 .btn:hover {
   transform: translateY(-2px);
 }`,
@@ -112,13 +142,27 @@ h1 {
 }
 
 export const getFileBadge = (name) => {
-  if (name.endsWith('.js') || name.endsWith('.mjs')) return { icon: 'ri-javascript-line', color: 'text-amber-500' }
-  if (name.endsWith('.jsx')) return { icon: 'ri-reactjs-line', color: 'text-cyan-500' }
-  if (name.endsWith('.html')) return { icon: 'ri-html5-line', color: 'text-orange-500' }
-  if (name.endsWith('.css')) return { icon: 'ri-css3-line', color: 'text-blue-500' }
-  if (name.endsWith('.json')) return { icon: 'ri-braces-line', color: 'text-emerald-500' }
-  if (name.endsWith('.py')) return { icon: 'ri-code-s-slash-line', color: 'text-yellow-500' }
-  return { icon: 'ri-file-text-line', color: 'text-muted' }
+  if (!name) return { icon: 'ri-file-text-line', color: 'text-muted' }
+  const lower = name.toLowerCase()
+  if (lower.endsWith('.js') || lower.endsWith('.mjs') || lower.endsWith('.cjs')) return { icon: 'ri-javascript-line', color: 'text-amber-400' }
+  if (lower.endsWith('.jsx')) return { icon: 'ri-reactjs-line', color: 'text-cyan-400' }
+  if (lower.endsWith('.ts') || lower.endsWith('.mts') || lower.endsWith('.cts')) return { icon: 'ri-code-s-slash-line', color: 'text-blue-400' }
+  if (lower.endsWith('.tsx')) return { icon: 'ri-reactjs-line', color: 'text-sky-400' }
+  if (lower.endsWith('.py') || lower.endsWith('.pyw')) return { icon: 'ri-terminal-window-line', color: 'text-yellow-400' }
+  if (lower.endsWith('.java') || lower.endsWith('.jar')) return { icon: 'ri-cup-line', color: 'text-orange-400' }
+  if (lower.endsWith('.c') || lower.endsWith('.h')) return { icon: 'ri-cpu-line', color: 'text-blue-400' }
+  if (lower.endsWith('.cpp') || lower.endsWith('.hpp') || lower.endsWith('.cc')) return { icon: 'ri-cpu-line', color: 'text-indigo-400' }
+  if (lower.endsWith('.go')) return { icon: 'ri-code-box-line', color: 'text-cyan-300' }
+  if (lower.endsWith('.rs')) return { icon: 'ri-tools-line', color: 'text-amber-500' }
+  if (lower.endsWith('.php')) return { icon: 'ri-server-line', color: 'text-indigo-300' }
+  if (lower.endsWith('.html') || lower.endsWith('.htm')) return { icon: 'ri-html5-line', color: 'text-orange-500' }
+  if (lower.endsWith('.css') || lower.endsWith('.scss') || lower.endsWith('.less')) return { icon: 'ri-css3-line', color: 'text-blue-500' }
+  if (lower.endsWith('.sql')) return { icon: 'ri-database-2-line', color: 'text-emerald-400' }
+  if (lower.endsWith('.json')) return { icon: 'ri-braces-line', color: 'text-emerald-400' }
+  if (lower.endsWith('.yaml') || lower.endsWith('.yml') || lower.endsWith('.toml')) return { icon: 'ri-settings-line', color: 'text-pink-400' }
+  if (lower.endsWith('.md') || lower.endsWith('.txt')) return { icon: 'ri-markdown-line', color: 'text-purple-400' }
+  if (lower.endsWith('.sh') || lower.endsWith('.bash') || lower.startsWith('.env') || lower.includes('dockerfile')) return { icon: 'ri-terminal-line', color: 'text-emerald-500' }
+  return { icon: 'ri-file-code-line', color: 'text-secondary' }
 }
 
 export const generatePreviewDoc = (files) => {
