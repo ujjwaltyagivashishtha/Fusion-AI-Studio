@@ -8,7 +8,7 @@ const EditorTabsBar = ({
   onAddNewFile
 }) => {
   return (
-    <div className="h-9 border-b border-default bg-sidebar flex items-center overflow-x-auto select-none shrink-0 scrollbar-none">
+    <div className="h-8 border-b border-default bg-sidebar flex items-center overflow-x-auto select-none shrink-0 scrollbar-none">
       <div className="flex items-center h-full">
         {openFiles.map((file) => {
           const badge = getFileBadge(file)
@@ -20,19 +20,19 @@ const EditorTabsBar = ({
               onClick={() => onSelectFile(file)}
               className={`group h-full px-3 border-r border-default flex items-center gap-2 text-xs font-mono transition cursor-pointer relative shrink-0 ${
                 isActive
-                  ? 'bg-editor text-primary font-medium border-t-2 border-t-indigo-500'
+                  ? 'bg-editor text-primary font-medium border-t-2 border-t-accent'
                   : 'bg-sidebar text-muted hover:text-secondary hover:bg-surface-hover'
               }`}
             >
-              <i className={`${badge.icon} ${badge.color} text-sm`} />
-              <span className="truncate max-w-[140px]">{file}</span>
+              <i className={`${badge.icon} ${badge.color} text-xs`} />
+              <span className="truncate max-w-[130px]">{file}</span>
 
               <button
                 onClick={(e) => onCloseTab(e, file)}
-                className="w-4 h-4 rounded hover:bg-surface-hover text-muted hover:text-primary flex items-center justify-center transition cursor-pointer opacity-60 group-hover:opacity-100"
+                className="w-3.5 h-3.5 rounded hover:bg-surface-hover text-muted hover:text-primary flex items-center justify-center transition cursor-pointer opacity-40 group-hover:opacity-100 text-[10px]"
                 title="Close Tab"
               >
-                <i className="ri-close-line text-xs" />
+                <i className="ri-close-line" />
               </button>
             </div>
           )
@@ -40,10 +40,10 @@ const EditorTabsBar = ({
 
         <button
           onClick={onAddNewFile}
-          className="h-full px-3 text-muted hover:text-primary hover:bg-surface-hover transition cursor-pointer flex items-center justify-center border-r border-default"
+          className="h-full px-2.5 text-muted hover:text-primary hover:bg-surface-hover transition cursor-pointer flex items-center justify-center border-r border-default"
           title="New File"
         >
-          <i className="ri-add-line text-sm" />
+          <i className="ri-add-line text-xs" />
         </button>
       </div>
     </div>
