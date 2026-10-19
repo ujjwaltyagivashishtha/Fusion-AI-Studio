@@ -11,7 +11,6 @@ const WorkspaceCenterArea = ({
   onAddNewFile,
   files,
   onContentChange,
-  collaborators,
   editorSettings,
   isSplitPreview,
   combinedPreviewDoc,
@@ -30,49 +29,55 @@ const WorkspaceCenterArea = ({
   onClearConsole,
   addToast
 }) => {
+  const isPreviewTab = bottomTab === 'preview'
+
   return (
-    <div className="flex-grow flex flex-col min-w-0 overflow-hidden relative">
-      <EditorTabsBar
-        openFiles={openFiles}
-        activeFile={activeFile}
-        onSelectFile={onSelectFile}
-        onCloseTab={onCloseTab}
-        onAddNewFile={onAddNewFile}
-      />
-
-      <div className="flex-grow flex min-h-0 overflow-hidden relative">
-        <CodeEditor
-          value={files[activeFile] || ''}
-          onChange={onContentChange}
-          fileName={activeFile}
-          onCopy={() => addToast('Code copied to clipboard!', 'info')}
-          collaborators={collaborators}
-          fontSize={editorSettings.fontSize}
-          wordWrap={editorSettings.wordWrap}
-          tabSize={editorSettings.tabSize}
-          showMinimap={editorSettings.showMinimap}
-        />
-
-        {isSplitPreview && (
-          <LivePreviewFrame
-            previewDoc={combinedPreviewDoc}
-            previewKey={previewKey}
-            onRefresh={onRefreshPreview}
+    <div className="flex-grow flex flex-col min-w-0 min-h-0 overflow-hidden relative">
+      {!isPreviewTab && (
+        <>
+          <EditorTabsBar
+            openFiles={openFiles}
+            activeFile={activeFile}
+            onSelectFile={onSelectFile}
+            onCloseTab={onCloseTab}
+            onAddNewFile={onAddNewFile}
           />
-        )}
-      </div>
 
-      {bottomTab !== 'hidden' && (
-        <div
-          className="resizer-v"
-          onMouseDown={onStartDraggingBottomDrawer}
-        />
+          <div className="flex-grow flex min-h-0 overflow-hidden relative">
+            <CodeEditor
+              value={files[activeFile] || ''}
+              onChange={onContentChange}
+              fileName={activeFile}
+              onCopy={() => addToast('Code copied to clipboard!', 'info')}
+              fontSize={editorSettings.fontSize}
+              wordWrap={editorSettings.wordWrap}
+              tabSize={editorSettings.tabSize}
+              showMinimap={editorSettings.showMinimap}
+            />
+
+            {isSplitPreview && (
+              <LivePreviewFrame
+                previewDoc={combinedPreviewDoc}
+                previewKey={previewKey}
+                onRefresh={onRefreshPreview}
+              />
+            )}
+          </div>
+
+          {bottomTab !== 'hidden' && (
+            <div
+              className="resizer-v"
+              onMouseDown={onStartDraggingBottomDrawer}
+            />
+          )}
+        </>
       )}
 
       <BottomDrawer
         bottomTab={bottomTab}
         setBottomTab={setBottomTab}
         bottomDrawerHeight={bottomDrawerHeight}
+        isExpanded={isPreviewTab}
         terminalHistory={terminalHistory}
         terminalInput={terminalInput}
         setTerminalInput={setTerminalInput}
