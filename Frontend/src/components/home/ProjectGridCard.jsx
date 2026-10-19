@@ -7,74 +7,64 @@ const ProjectGridCard = ({ project, onNavigate, onDelete }) => {
   return (
     <div
       onClick={() => onNavigate(project)}
-      className="group relative cursor-pointer rounded-2xl glass-card p-5.5 hover:border-indigo-500/50 hover:shadow-glow transition duration-200 flex flex-col justify-between"
+      tabIndex={0}
+      role="button"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onNavigate(project)
+        }
+      }}
+      className="group rounded-2xl border border-default bg-surface hover:bg-surface-elevated hover:border-strong p-5 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       <div>
-        {/* Card Header */}
-        <div className="flex items-start justify-between mb-3.5">
-          <div className={`w-10 h-10 rounded-xl border flex items-center justify-center text-lg shadow-sm ${template.badgeColor}`}>
-            <i className={template.icon} />
+        {/* Top Header: Language Icon and Runtime Badge */}
+        <div className="flex items-center justify-between">
+          <div className="w-10 h-10 rounded-xl bg-surface-elevated border border-default flex items-center justify-center text-primary group-hover:text-accent group-hover:scale-105 transition-all shadow-xs">
+            <i className={`${template.icon} text-xl`} />
           </div>
 
-          <div className="flex items-center gap-1">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete(project)
-              }}
-              title="Delete Workspace"
-              aria-label={`Delete ${project.name}`}
-              className="p-1.5 rounded-lg text-muted hover:text-red-400 hover:bg-red-500/10 transition cursor-pointer"
-            >
-              <i className="ri-delete-bin-line text-sm" />
-            </button>
-            <span className="p-1.5 rounded-lg text-muted group-hover:text-indigo-400 transition">
-              <i className="ri-arrow-right-up-line text-sm" />
-            </span>
-          </div>
-        </div>
-
-        {/* Template Badge & Date */}
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md border border-default bg-surface/50 text-secondary">
-            {project.template || 'NODE'}
-          </span>
-          <span className="text-[11px] text-muted font-mono">
-            {formatRelativeTime(project.updatedAt || project.createdAt)}
+          <span className="text-[10px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-surface-elevated text-secondary border border-default/70 font-medium">
+            {template.tag}
           </span>
         </div>
 
-        {/* Title & Description */}
-        <h3 className="font-bold text-sm text-primary truncate group-hover:text-indigo-400 transition font-display">
-          {project.name}
-        </h3>
-        <p className="text-xs text-secondary mt-1.5 line-clamp-2 leading-relaxed">
-          {project.description || 'Full-stack AI workspace environment'}
-        </p>
+        {/* Workspace Name & Description */}
+        <div className="mt-4">
+          <h2 className="text-base font-semibold text-primary group-hover:text-accent transition-colors truncate">
+            {project.name}
+          </h2>
+          <p className="text-xs text-secondary mt-1.5 line-clamp-2 leading-relaxed min-h-[36px]">
+            {project.description || template.desc}
+          </p>
+        </div>
       </div>
 
-      {/* Card Footer: Users & Launch CTA */}
-      <div className="mt-5 pt-3.5 border-t border-default flex items-center justify-between">
+      {/* Card Footer: Last-modified info, Delete, and Open */}
+      <div className="mt-5 pt-3.5 border-t border-default/60 flex items-center justify-between text-xs">
+        <span className="text-muted text-[11px] flex items-center gap-1.5">
+          <i className="ri-time-line text-xs" />
+          <span>{formatRelativeTime(project.updatedAt || project.createdAt)}</span>
+        </span>
+
         <div className="flex items-center gap-2">
-          <div className="flex -space-x-1.5 overflow-hidden">
-            {(project.users || []).slice(0, 3).map((u, idx) => (
-              <div
-                key={idx}
-                className="inline-block h-5 w-5 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 border border-surface text-[9px] font-bold text-white flex items-center justify-center uppercase shadow-sm"
-                title={typeof u === 'string' ? u : u.email}
-              >
-                {(typeof u === 'string' ? u : u.email || 'U')[0]}
-              </div>
-            ))}
-          </div>
-          <span className="text-[11px] font-medium text-muted">
-            {project.users?.length || 1} {project.users?.length === 1 ? 'member' : 'members'}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(project)
+            }}
+            title={`Delete ${project.name}`}
+            aria-label={`Delete ${project.name}`}
+            className="w-7 h-7 rounded-lg text-muted hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all flex items-center justify-center cursor-pointer text-xs"
+          >
+            <i className="ri-delete-bin-line" />
+          </button>
+          <span className="inline-flex items-center gap-1 font-medium text-accent hover:underline text-xs pl-1">
+            <span>Open</span>
+            <i className="ri-arrow-right-line text-xs group-hover:translate-x-0.5 transition-transform" />
           </span>
         </div>
-
-        <span className="text-xs font-semibold text-indigo-400 group-hover:text-indigo-300 group-hover:translate-x-1 transition-all flex items-center gap-1">
-          Open Studio <i className="ri-arrow-right-line text-xs" />
-        </span>
       </div>
     </div>
   )
