@@ -549,4 +549,55 @@ describe("Fusion AI Code Generation Engine - Test Suite", () => {
       }
     });
   });
+
+  // 12. Express Server & Multi-Language Generation
+  describe("12. Express Server & Multi-Language Generation", () => {
+    it("should generate a complete Express server with health check and middleware for 'create a express server'", () => {
+      const result = generateFallbackResponse({
+        prompt: "create a express server",
+        activeFile: "app.js"
+      });
+
+      assert.strictEqual(result.targetFile, "app.js");
+      assert.strictEqual(result.action, "create");
+      assert.ok(result.suggestedCode, "Expected Express server code");
+      assert.ok(result.suggestedCode.includes("express()"), "Expected express() initialization");
+      assert.ok(result.suggestedCode.includes("/health"), "Expected /health endpoint");
+      assert.ok(result.suggestedCode.includes("app.listen"), "Expected server listener");
+      assert.ok(result.suggestedCode.includes("PORT"), "Expected port configuration");
+    });
+
+    it("should resolve target files for multi-language requests (Python, Java, C++, SQL)", () => {
+      const pyPlan = detectTargetFileAndAction({ prompt: "Write a python script to process images", activeFile: "app.js" });
+      assert.strictEqual(pyPlan.targetFile, "main.py");
+
+      const javaPlan = detectTargetFileAndAction({ prompt: "Create a Java class for user service", activeFile: "app.js" });
+      assert.strictEqual(javaPlan.targetFile, "App.java");
+
+      const sqlPlan = detectTargetFileAndAction({ prompt: "Create a SQL schema for orders", activeFile: "app.js" });
+      assert.strictEqual(sqlPlan.targetFile, "schema.sql");
+
+      const cppPlan = detectTargetFileAndAction({ prompt: "Write a C++ program for matrix multiplication", activeFile: "app.js" });
+      assert.strictEqual(cppPlan.targetFile, "main.cpp");
+    });
+  });
+
+  // 13. Structured Error Reporting & Fallback Diagnostic Integrity
+  describe("13. Structured Error Reporting & Diagnostics", () => {
+    it("should return isError: true and retain retryPrompt when offline without false success", () => {
+      const result = generateFallbackResponse({
+        prompt: "arbitrary unrecognized custom calculation algorithm",
+        activeFile: "app.js",
+        errorInfo: { category: "AUTH_ERROR", safeMessage: "Invalid API key in .env", status: 401 }
+      });
+
+      assert.strictEqual(result.isError, true);
+      assert.strictEqual(result.retryPrompt, "arbitrary unrecognized custom calculation algorithm");
+      assert.strictEqual(result.suggestedCode, null);
+      assert.strictEqual(result.source, "fallback");
+      assert.ok(result.reply.includes("Live AI Service Offline"));
+      assert.ok(result.reply.includes("Invalid API key in .env"));
+    });
+  });
 });
+
