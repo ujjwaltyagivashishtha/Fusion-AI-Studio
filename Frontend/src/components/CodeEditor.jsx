@@ -14,7 +14,6 @@ const CodeEditor = ({
   onChange,
   fileName,
   onCopy,
-  collaborators = [],
   isDiffMode = false,
   onAcceptDiff = () => {},
   onRejectDiff = () => {},
@@ -27,9 +26,11 @@ const CodeEditor = ({
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [overrideWordWrap, setOverrideWordWrap] = useState(null)
   const [overrideFontSize, setOverrideFontSize] = useState(null)
+  const [overrideMinimap, setOverrideMinimap] = useState(null)
 
   const activeWordWrap = overrideWordWrap !== null ? overrideWordWrap : wordWrap
   const activeFontSize = overrideFontSize !== null ? overrideFontSize : fontSize
+  const activeShowMinimap = overrideMinimap !== null ? overrideMinimap : showMinimap
 
   const lines = useMemo(() => (value || '').split('\n'), [value])
   const totalLines = lines.length
@@ -88,6 +89,8 @@ const CodeEditor = ({
         onFormatCode={handleFormatCode}
         activeWordWrap={activeWordWrap}
         onToggleWordWrap={() => setOverrideWordWrap(!activeWordWrap)}
+        showMinimap={activeShowMinimap}
+        onToggleMinimap={() => setOverrideMinimap(!activeShowMinimap)}
         activeFontSize={activeFontSize}
         onChangeFontSize={setOverrideFontSize}
         onCopy={handleCopy}
@@ -125,7 +128,7 @@ const CodeEditor = ({
               <div
                 key={i}
                 className={`transition-colors ${
-                  isCurrentLine ? 'text-indigo-400 font-bold' : 'hover:text-primary'
+                  isCurrentLine ? 'text-accent-primary font-medium' : 'hover:text-primary'
                 }`}
               >
                 <span>{lineNum}</span>
@@ -168,7 +171,7 @@ const CodeEditor = ({
             autoCapitalize="off"
             autoComplete="off"
             aria-label={`Code editor for ${fileName}`}
-            className={`absolute inset-0 p-3 pt-3 bg-transparent text-transparent caret-indigo-400 outline-none resize-none leading-6 font-mono selection:bg-indigo-500/30 overflow-auto ${
+            className={`absolute inset-0 p-3 pt-3 bg-transparent text-transparent caret-accent-primary outline-none resize-none leading-6 font-mono selection:bg-accent-primary/20 overflow-auto ${
               activeWordWrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre'
             }`}
             style={{
@@ -177,24 +180,9 @@ const CodeEditor = ({
               MozTabSize: tabSize
             }}
           />
-
-          {collaborators.length > 1 && (
-            <div
-              className="absolute pointer-events-none flex items-center gap-1 transition-all duration-300"
-              style={{
-                top: `${Math.min(cursorPos.line + 2, totalLines) * 24}px`,
-                left: '160px'
-              }}
-            >
-              <span className="w-0.5 h-5 bg-emerald-400 animate-pulse shadow-sm" />
-              <span className="px-1.5 py-0.5 rounded bg-emerald-500 text-[9px] font-bold text-white uppercase shadow-sm tracking-wider">
-                {typeof collaborators[1] === 'object' ? collaborators[1].email?.split('@')[0] : 'Partner'}
-              </span>
-            </div>
-          )}
         </div>
 
-        {showMinimap && (
+        {activeShowMinimap && (
           <EditorMinimap
             minimapRef={minimapRef}
             lines={lines}

@@ -7,6 +7,7 @@ import HomeHeader from './home/HomeHeader'
 import HomeBanner from './home/HomeBanner'
 import HomeControls from './home/HomeControls'
 import HomeProjectList from './home/HomeProjectList'
+import HomeTemplateDiscovery from './home/HomeTemplateDiscovery'
 import CreateProjectModal from './home/CreateProjectModal'
 import DeleteProjectModal from './home/DeleteProjectModal'
 
@@ -144,10 +145,24 @@ const Home = () => {
     return matchesSearch && matchesTemplate
   })
 
-  const totalCollaborators = projects.reduce((acc, curr) => acc + (curr.users?.length || 0), 0)
+  const handleOpenCreateModal = (templateId = 'node-express') => {
+    setSelectedTemplate(templateId)
+    setIsModalOpen(true)
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n' && !isModalOpen) {
+        e.preventDefault()
+        handleOpenCreateModal('node-express')
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isModalOpen])
 
   return (
-    <div className="min-h-screen bg-app cosmic-grid-bg ambient-glow-bg text-primary flex flex-col transition-colors duration-200 relative">
+    <div className="min-h-screen bg-app text-primary flex flex-col transition-colors duration-150">
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
@@ -163,29 +178,26 @@ const Home = () => {
         onLogout={handleLogout}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full relative z-10">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-grow w-full">
         <HomeBanner
-          user={user}
-          projectsCount={projects.length}
-          totalCollaborators={totalCollaborators}
-          onOpenCreateModal={() => setIsModalOpen(true)}
+          onOpenCreateModal={handleOpenCreateModal}
         />
 
         {error && (
           <div
             role="alert"
-            className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-400 text-xs animate-slideDown backdrop-blur-md"
+            className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-rose-300 text-xs animate-slideDown shadow-xs"
           >
             <div className="flex items-center gap-2.5">
-              <i className="ri-error-warning-line text-base shrink-0" />
+              <i className="ri-error-warning-line text-sm shrink-0 text-rose-400" />
               <span className="font-medium">{error}</span>
             </div>
             <button
               onClick={() => setError('')}
               aria-label="Dismiss error"
-              className="hover:text-red-300 transition cursor-pointer p-1"
+              className="hover:text-rose-200 transition cursor-pointer p-0.5"
             >
-              <i className="ri-close-line text-base" />
+              <i className="ri-close-line text-sm" />
             </button>
           </div>
         )}
@@ -206,11 +218,15 @@ const Home = () => {
             viewMode={viewMode}
             searchQuery={searchQuery}
             selectedFilterTemplate={selectedFilterTemplate}
-            onOpenCreateModal={() => setIsModalOpen(true)}
+            onOpenCreateModal={handleOpenCreateModal}
             onNavigate={(p) => navigate(`/project/${p._id}`, { state: { project: p } })}
             onDelete={setDeleteModalProject}
           />
         </section>
+
+        <HomeTemplateDiscovery
+          onOpenCreateModal={handleOpenCreateModal}
+        />
       </main>
 
       <CreateProjectModal

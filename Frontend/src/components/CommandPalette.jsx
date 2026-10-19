@@ -45,7 +45,7 @@ const CommandPalette = ({
     {
       id: 'toggle-theme',
       group: 'Preferences',
-      icon: resolvedTheme === 'dark' ? 'ri-sun-line text-amber-500' : 'ri-moon-line text-indigo-500',
+      icon: resolvedTheme === 'dark' ? 'ri-sun-line text-amber-500' : 'ri-moon-line text-accent',
       label: `Switch to ${resolvedTheme === 'dark' ? 'Light' : 'Dark'} Mode`,
       hint: 'Theme',
       action: () => toggleTheme()
@@ -54,7 +54,7 @@ const CommandPalette = ({
     {
       id: 'open-settings',
       group: 'Preferences',
-      icon: 'ri-settings-4-line text-blue-500',
+      icon: 'ri-settings-4-line text-secondary',
       label: 'Open Studio Preferences & Editor Settings',
       hint: 'Settings',
       action: () => onOpenSettingsModal?.()
@@ -63,7 +63,7 @@ const CommandPalette = ({
     {
       id: 'invite-member',
       group: 'Collaboration',
-      icon: 'ri-user-add-line text-indigo-500',
+      icon: 'ri-user-add-line text-accent',
       label: 'Add Collaborator / View Workspace Users',
       hint: 'Invite',
       action: () => onOpenInviteModal?.()
@@ -79,7 +79,7 @@ const CommandPalette = ({
     // AI Commands
     {
       id: 'ai-explain',
-      group: 'AI Assistant',
+      group: 'Nexus AI',
       icon: 'ri-sparkles-line text-amber-500',
       label: `Explain Architecture of ${activeFile || 'current file'}`,
       hint: 'Audit',
@@ -87,15 +87,15 @@ const CommandPalette = ({
     },
     {
       id: 'ai-refactor',
-      group: 'AI Assistant',
-      icon: 'ri-flashlight-line text-violet-500',
+      group: 'Nexus AI',
+      icon: 'ri-flashlight-line text-accent',
       label: `Refactor & Clean ${activeFile || 'current file'}`,
       hint: 'Refactor',
       action: () => onTriggerAiPrompt?.(`Refactor ${activeFile} for cleaner performance and readability`)
     },
     {
       id: 'ai-test',
-      group: 'AI Assistant',
+      group: 'Nexus AI',
       icon: 'ri-shield-check-line text-emerald-500',
       label: `Generate Vitest Unit Tests for ${activeFile || 'current file'}`,
       hint: 'Testing',
@@ -185,15 +185,15 @@ const CommandPalette = ({
       role="dialog"
       aria-modal="true"
       aria-label="Command Palette"
-      className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 px-4 bg-black/70 backdrop-blur-md animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 px-4 bg-black/60 backdrop-blur-xs animate-fadeIn"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) handleClose()
       }}
     >
-      <div className="w-full max-w-xl rounded-3xl glass-panel shadow-2xl overflow-hidden flex flex-col animate-slideDown border border-white/10">
+      <div className="w-full max-w-xl rounded-lg border border-default bg-surface shadow-2xl overflow-hidden flex flex-col animate-slideDown">
         {/* Search Input Bar */}
-        <div className="p-4 border-b border-default flex items-center gap-3 bg-surface/80 backdrop-blur-md">
-          <i className="ri-search-line text-indigo-400 text-lg shrink-0" />
+        <div className="p-3 border-b border-default flex items-center gap-2.5 bg-surface">
+          <i className="ri-search-line text-accent text-base shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -206,9 +206,9 @@ const CommandPalette = ({
               setSelectedIndex(0)
             }}
             placeholder="Type a command, jump to a file, or prompt AI..."
-            className="w-full bg-transparent text-sm text-primary placeholder-muted outline-none font-sans"
+            className="w-full bg-transparent text-xs text-primary placeholder-muted outline-none font-sans"
           />
-          <kbd className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-surface/80 border border-default text-muted shrink-0">
+          <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-default bg-app text-muted shrink-0">
             ESC
           </kbd>
         </div>
@@ -218,10 +218,10 @@ const CommandPalette = ({
           id={listboxId}
           ref={listRef}
           role="listbox"
-          className="max-h-80 overflow-y-auto p-2 space-y-1"
+          className="max-h-80 overflow-y-auto p-1.5 space-y-0.5"
         >
           {filteredActions.length === 0 ? (
-            <div className="py-12 text-center text-xs text-muted">
+            <div className="py-12 text-center text-xs text-muted font-mono">
               No matching commands or files found for "{query}"
             </div>
           ) : (
@@ -237,20 +237,20 @@ const CommandPalette = ({
                     handleClose()
                   }}
                   onMouseEnter={() => setSelectedIndex(index)}
-                  className={`px-3.5 py-2.5 rounded-2xl text-xs flex items-center justify-between transition cursor-pointer select-none ${
+                  className={`px-3 py-2 rounded-md text-xs flex items-center justify-between transition cursor-pointer select-none ${
                     isSelected
-                      ? 'bg-indigo-500/15 text-primary border border-indigo-500/35 shadow-sm'
-                      : 'text-secondary hover:bg-surface-hover/80 border border-transparent'
+                      ? 'bg-surface-elevated text-primary border border-default border-l-2 border-l-accent shadow-xs'
+                      : 'text-secondary hover:bg-surface-hover border border-transparent'
                   }`}
                 >
-                  <div className="flex items-center gap-3 truncate min-w-0">
-                    <i className={`${item.icon} text-base shrink-0`} />
+                  <div className="flex items-center gap-2.5 truncate min-w-0">
+                    <i className={`${item.icon} text-sm shrink-0`} />
                     <span className="font-medium truncate text-primary">{item.label}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-3">
                     <span className="text-[10px] text-muted font-mono">{item.group}</span>
                     {item.hint && (
-                      <kbd className="text-[10px] px-2 py-0.5 rounded-lg bg-surface/80 border border-default text-secondary font-mono">
+                      <kbd className="text-[10px] px-1.5 py-0.5 rounded border border-default bg-app text-muted font-mono">
                         {item.hint}
                       </kbd>
                     )}
@@ -262,13 +262,13 @@ const CommandPalette = ({
         </div>
 
         {/* Footer Navigation Hints */}
-        <div className="p-3 border-t border-default bg-surface/60 px-4 flex items-center justify-between text-[11px] text-muted font-mono">
+        <div className="p-2.5 border-t border-default bg-app px-3.5 flex items-center justify-between text-[11px] text-muted font-mono">
           <div className="flex items-center gap-3">
             <span>↑↓ navigate</span>
             <span>↵ select</span>
             <span>esc close</span>
           </div>
-          <span className="text-[10px] font-semibold text-indigo-400">Fusion Command Center</span>
+          <span className="text-[10px] text-secondary font-mono">Command Center</span>
         </div>
       </div>
     </div>
