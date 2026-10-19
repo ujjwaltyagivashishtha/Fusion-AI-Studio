@@ -7,11 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "test": "node --test src/utils/markdownParser.test.js",
     "preview": "vite preview",
     "check:lines": "node scripts/validate-lines.js"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@webcontainer/api": "^1.6.4",
     "axios": "^1.20.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
