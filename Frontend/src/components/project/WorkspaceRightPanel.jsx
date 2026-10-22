@@ -15,6 +15,8 @@ const WorkspaceRightPanel = ({
   aiLoading,
   prompt,
   setPrompt,
+  chatPrompt,
+  setChatPrompt,
   onSendPrompt,
   onApplyAiCode,
   onCreateAiFile,
@@ -91,8 +93,8 @@ const WorkspaceRightPanel = ({
         ) : (
           <TeamChatPanel
             teamMessages={teamMessages}
-            prompt={prompt}
-            setPrompt={setPrompt}
+            chatPrompt={chatPrompt}
+            setChatPrompt={setChatPrompt}
             onSendMessage={onSendPrompt}
             messagesEndRef={messagesEndRef}
           />
