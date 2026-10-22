@@ -2,8 +2,8 @@ import "dotenv/config";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const apiKey = process.env.GOOGLE_AI_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-export const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
-export const BACKUP_GEMINI_MODELS = ["gemini-3.8-flash", "gemini-flash-latest"];
+export const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+export const BACKUP_GEMINI_MODELS = ["gemini-1.0-pro", "gemini-pro"];
 
 let genAI = null;
 if (apiKey) {
