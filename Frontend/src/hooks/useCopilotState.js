@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 
 export const useCopilotState = ({ teamMessages, rightPanelTab }) => {
+  // Separate prompt states so Nexus AI and Team Chat inputs never bleed into each other
   const [prompt, setPrompt] = useState('')
+  const [chatPrompt, setChatPrompt] = useState('')
   const [aiMode, setAiMode] = useState('copilot')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiMessages, setAiMessages] = useState([
@@ -19,6 +21,8 @@ export const useCopilotState = ({ teamMessages, rightPanelTab }) => {
   return {
     prompt,
     setPrompt,
+    chatPrompt,
+    setChatPrompt,
     aiMode,
     setAiMode,
     aiLoading,
