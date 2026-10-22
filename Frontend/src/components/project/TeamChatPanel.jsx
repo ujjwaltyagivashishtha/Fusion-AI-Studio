@@ -1,7 +1,7 @@
 const TeamChatPanel = ({
   teamMessages,
-  prompt,
-  setPrompt,
+  chatPrompt,
+  setChatPrompt,
   onSendMessage,
   messagesEndRef
 }) => {
@@ -57,14 +57,14 @@ const TeamChatPanel = ({
         <div className="relative rounded-md border border-default focus-within:border-accent bg-app transition">
           <input
             type="text"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
+            value={chatPrompt}
+            onChange={(e) => setChatPrompt(e.target.value)}
             placeholder="Broadcast to workspace team..."
             className="w-full pl-3 pr-10 py-2.5 bg-transparent text-xs text-primary placeholder-muted outline-none font-sans"
           />
           <button
             type="submit"
-            disabled={!prompt.trim()}
+            disabled={!chatPrompt?.trim()}
             className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md bg-accent text-accent-contrast disabled:opacity-30 cursor-pointer transition shadow-xs hover:opacity-90"
             title="Send message"
           >
