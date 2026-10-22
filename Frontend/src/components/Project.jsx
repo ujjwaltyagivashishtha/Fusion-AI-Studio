@@ -1,8 +1,8 @@
-import { useState, useContext, useMemo, useCallback } from 'react'
+import { useState, useContext, useMemo } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { UserContext } from '../context/user.context'
 import ToastContainer from './Toast.jsx'
-import { generatePreviewDoc } from '../utils/workspaceConstants'
+import { generatePreviewDoc, searchFiles } from '../utils/workspaceConstants'
 import { useWorkspaceSocket } from '../hooks/useWorkspaceSocket'
 import { useTerminal } from '../hooks/useTerminal'
 import { useWorkspaceFiles } from '../hooks/useWorkspaceFiles'
@@ -11,6 +11,8 @@ import { useWorkspaceActions } from '../hooks/useWorkspaceActions'
 import { useProjectLoader } from '../hooks/useProjectLoader'
 import { useWorkspaceModalsState } from '../hooks/useWorkspaceModalsState'
 import { useCopilotState } from '../hooks/useCopilotState'
+import { useEditorSettings } from '../hooks/useEditorSettings'
+import { useToast } from '../hooks/useToast'
 import WorkspaceTopbar from './project/WorkspaceTopbar'
 import ActivityBar from './project/ActivityBar'
 import WorkspaceSidebar from './project/WorkspaceSidebar'
@@ -46,22 +48,8 @@ const Project = () => {
     startDraggingBottomDrawer
   } = usePanelResizers()
 
-  const [editorSettings, setEditorSettings] = useState(() => {
-    try {
-      const saved = localStorage.getItem('fusion_editor_settings')
-      if (saved) return JSON.parse(saved)
-    } catch {
-      // Fallback
-    }
-    return { fontSize: 13, tabSize: 2, wordWrap: true, showMinimap: true }
-  })
-
-  const [toasts, setToasts] = useState([])
-  const addToast = useCallback((message, type = 'info') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, message, type }])
-  }, [])
-  const dismissToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id))
+  const [editorSettings, setEditorSettings] = useEditorSettings()
+  const { toasts, addToast, dismissToast } = useToast()
 
   const filesManager = useWorkspaceFiles({ targetProjectId, socketConnected: false, addToast })
   const modalsState = useWorkspaceModalsState()
@@ -77,7 +65,8 @@ const Project = () => {
     setActiveFile: filesManager.setActiveFile,
     saveFilesToBackend: filesManager.saveFilesToBackend,
     saveStatus: filesManager.saveStatus,
-    handleExportProject: () => {},
+    // handleExportProject wired after actions is created; using a ref-style callback
+    handleExportProject: () => actions?.handleExportProject?.(),
     setBottomTab
   })
 
@@ -136,21 +125,22 @@ const Project = () => {
     f.toLowerCase().includes(filesManager.fileFilter.toLowerCase())
   )
 
-  const searchInFilesResults = useMemo(() => {
-    if (!searchInFilesQuery.trim()) return []
-    const q = searchInFilesQuery.toLowerCase()
-    const results = []
-    for (const [name, content] of Object.entries(filesManager.files)) {
-      content.split('\n').forEach((line, idx) => {
-        if (line.toLowerCase().includes(q)) {
-          results.push({ file: name, lineNum: idx + 1, content: line.trim() })
-        }
-      })
-    }
-    return results
-  }, [searchInFilesQuery, filesManager.files])
+  const searchInFilesResults = useMemo(
+    () => searchFiles(filesManager.files, searchInFilesQuery),
+    [searchInFilesQuery, filesManager.files]
+  )
 
   const combinedPreviewDoc = useMemo(() => generatePreviewDoc(filesManager.files), [filesManager.files])
+
+  const handleSaveFiles = () => {
+    filesManager.saveFilesToBackend(filesManager.files)
+    addToast('All workspace files saved to cloud!', 'success')
+  }
+
+  const handleToggleSplitPreview = () => {
+    if (!isSplitPreview && bottomTab === 'preview') setBottomTab('hidden')
+    setIsSplitPreview(!isSplitPreview)
+  }
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-app text-primary flex flex-col select-none transition-colors duration-150">
@@ -160,15 +150,10 @@ const Project = () => {
         projectName={project.name}
         onOpenRenameModal={() => modalsState.setIsRenameModalOpen(true)}
         saveStatus={filesManager.saveStatus}
-        onSave={() => {
-          filesManager.saveFilesToBackend(filesManager.files)
-          addToast('All workspace files saved to cloud!', 'success')
-        }}
+        isSplitPreview={isSplitPreview}
+        onSave={handleSaveFiles}
         onRunCode={actions.handleRunCode}
-        onToggleSplitPreview={() => {
-          if (!isSplitPreview && bottomTab === 'preview') setBottomTab('hidden')
-          setIsSplitPreview(!isSplitPreview)
-        }}
+        onToggleSplitPreview={handleToggleSplitPreview}
         onOpenInviteModal={actions.handleOpenInviteModal}
         onOpenDetailsModal={() => modalsState.setIsDetailsModalOpen(true)}
         onExportProject={actions.handleExportProject}
@@ -259,6 +244,8 @@ const Project = () => {
           aiLoading={copilotManager.aiLoading}
           prompt={copilotManager.prompt}
           setPrompt={copilotManager.setPrompt}
+          chatPrompt={copilotManager.chatPrompt}
+          setChatPrompt={copilotManager.setChatPrompt}
           onSendPrompt={actions.handleSendPrompt}
           onApplyAiCode={filesManager.handleApplyAiCode}
           onCreateAiFile={filesManager.handleCreateAiFile}
@@ -281,6 +268,15 @@ const Project = () => {
         files={filesManager.files}
         onSelectFile={filesManager.handleSelectFile}
         onRunCode={actions.handleRunCode}
+        onToggleSplitPreview={handleToggleSplitPreview}
+        onOpenInviteModal={actions.handleOpenInviteModal}
+        onOpenDetailsModal={() => modalsState.setIsDetailsModalOpen(true)}
+        onTriggerAiPrompt={(aiPrompt) => {
+          copilotManager.setPrompt(aiPrompt)
+          setRightPanelTab('copilot')
+          if (!isRightPanelOpen) setIsRightPanelOpen(true)
+        }}
+        activeFile={filesManager.activeFile}
         collaborators={collaborators}
         project={project}
         onAddCollaborators={actions.handleAddCollaborators}
