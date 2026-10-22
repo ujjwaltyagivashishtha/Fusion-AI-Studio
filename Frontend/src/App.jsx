@@ -1,14 +1,17 @@
 import AppRoutes from './routes/AppRoutes'
 import { UserProvider } from './context/user.context'
 import { ThemeProvider } from './context/theme.context'
+import ErrorBoundary from './components/ErrorBoundary'
 
 const App = () => {
   return (
-    <ThemeProvider>
-      <UserProvider>
-        <AppRoutes />
-      </UserProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <UserProvider>
+          <AppRoutes />
+        </UserProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   )
 }
 
