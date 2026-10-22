@@ -3,6 +3,8 @@ import express from "express";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import mongoose from "mongoose";
 import connectDB from "./db/db.js";
 import redisClient from "./services/redis.service.js";
@@ -41,6 +43,31 @@ app.use(
   })
 );
 
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: false, // Allow inline scripts for preview iframe
+  crossOriginEmbedderPolicy: false
+}));
+
+// Rate limiting — protect AI and auth endpoints from abuse
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === "production" ? 300 : 3000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Too many requests, please try again later." }
+});
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: process.env.NODE_ENV === "production" ? 20 : 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "AI rate limit reached. Please wait before sending another prompt." }
+});
+
+app.use(globalLimiter);
+
 app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ extended: true, limit: "15mb" }));
 app.use(morgan("dev"));
@@ -49,12 +76,12 @@ app.use(cookieParser());
 // API Routes
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/projects", projectRoutes);
-app.use("/api/v1/ai", aiRoutes);
+app.use("/api/v1/ai", aiLimiter, aiRoutes);
 
 // Compatibility Routes (without /api/v1 prefix)
 app.use("/users", userRoutes);
 app.use("/projects", projectRoutes);
-app.use("/ai", aiRoutes);
+app.use("/ai", aiLimiter, aiRoutes);
 
 // Health check endpoint
 const getHealthStatus = () => ({
