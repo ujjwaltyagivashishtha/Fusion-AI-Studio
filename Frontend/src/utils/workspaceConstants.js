@@ -209,3 +209,17 @@ export const generatePreviewDoc = (files) => {
 
   return doc
 }
+
+export function searchFiles(files, query) {
+  if (!query?.trim() || !files) return []
+  const q = query.toLowerCase()
+  const results = []
+  for (const [name, content] of Object.entries(files)) {
+    content.split('\n').forEach((line, idx) => {
+      if (line.toLowerCase().includes(q)) {
+        results.push({ file: name, lineNum: idx + 1, content: line.trim() })
+      }
+    })
+  }
+  return results
+}
