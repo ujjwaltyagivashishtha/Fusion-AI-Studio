@@ -127,15 +127,21 @@ export const useWorkspaceActions = ({
 
   const handleSendPrompt = async (e, retryPrompt = null) => {
     e?.preventDefault()
-    const userMsg = (typeof retryPrompt === 'string' ? retryPrompt : copilotManager.prompt).trim()
+    const isChat = rightPanelTab === 'chat'
+    const rawMsg = isChat ? copilotManager.chatPrompt : copilotManager.prompt
+    const userMsg = (typeof retryPrompt === 'string' ? retryPrompt : rawMsg).trim()
     if (!userMsg || (rightPanelTab === 'copilot' && copilotManager.aiLoading)) return
 
     const currentId = project._id || targetProjectId
     if (!retryPrompt) {
-      copilotManager.setPrompt('')
+      if (isChat) {
+        copilotManager.setChatPrompt('')
+      } else {
+        copilotManager.setPrompt('')
+      }
     }
 
-    if (rightPanelTab === 'chat') {
+    if (isChat) {
       socketManager.setTeamMessages((prev) => [
         ...prev,
         { id: Date.now() + Math.random(), sender: 'user', senderName: 'You', text: userMsg, timestamp: new Date().toISOString() }
