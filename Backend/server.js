@@ -273,3 +273,29 @@ io.on("connection", (socket) => {
 server.listen(port, () => {
   console.log(`🚀 Fusion AI Studio Backend Server running on port ${port}`);
 });
+
+// Graceful shutdown handler
+const gracefulShutdown = (signal) => {
+  console.log(`\n[Server] Received ${signal}. Closing HTTP and Socket.IO connections...`);
+  io.close(() => {
+    console.log("[Server] Socket.IO server closed.");
+  });
+  server.close(async () => {
+    console.log("[Server] HTTP server closed.");
+    try {
+      await mongoose.connection.close(false);
+      console.log("[Server] MongoDB connection closed.");
+    } catch (e) {
+      console.warn("[Server] Error closing MongoDB:", e.message);
+    }
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    console.error("[Server] Forcefully terminating after 10s timeout.");
+    process.exit(1);
+  }, 10000).unref();
+};
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
