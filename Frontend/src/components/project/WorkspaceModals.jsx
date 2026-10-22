@@ -11,8 +11,13 @@ const WorkspaceModals = ({
   user,
   onLogout,
   files,
+  activeFile,
   onSelectFile,
   onRunCode,
+  onToggleSplitPreview,
+  onOpenInviteModal,
+  onOpenDetailsModal,
+  onTriggerAiPrompt,
   collaborators,
   project,
   onAddCollaborators,
@@ -33,9 +38,14 @@ const WorkspaceModals = ({
         isOpen={modalsState.isCommandPaletteOpen}
         onClose={() => modalsState.setIsCommandPaletteOpen(false)}
         files={files}
+        activeFile={activeFile}
         onSelectFile={onSelectFile}
         onRunCode={onRunCode}
-        onOpenSettings={() => modalsState.setIsSettingsModalOpen(true)}
+        onToggleSplitPreview={onToggleSplitPreview}
+        onOpenSettingsModal={() => modalsState.setIsSettingsModalOpen(true)}
+        onOpenInviteModal={onOpenInviteModal}
+        onOpenDetailsModal={onOpenDetailsModal}
+        onTriggerAiPrompt={onTriggerAiPrompt}
       />
 
       <InviteModal
