@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   intializeSocket,
   recieveMessage,
@@ -19,6 +19,9 @@ export const useWorkspaceSocket = ({
   const [onlineUsers, setOnlineUsers] = useState([])
   const [teamMessages, setTeamMessages] = useState([])
   const [unreadTeamCount, setUnreadTeamCount] = useState(0)
+  // Stable ref so handlers close over current tab value without triggering socket reconnect
+  const rightPanelTabRef = useRef(rightPanelTab)
+  useEffect(() => { rightPanelTabRef.current = rightPanelTab }, [rightPanelTab])
 
   useEffect(() => {
     if (!targetProjectId) return
@@ -45,7 +48,7 @@ export const useWorkspaceSocket = ({
           timestamp: data.timestamp || new Date().toISOString()
         }
       ])
-      if (rightPanelTab !== 'chat') {
+      if (rightPanelTabRef.current !== 'chat') {
         setUnreadTeamCount((prev) => prev + 1)
       }
       addToast(`Message from ${senderName}`, 'info')
@@ -138,7 +141,7 @@ export const useWorkspaceSocket = ({
       removeListener('disconnect', handleDisconnect)
       disconnectSocket()
     }
-  }, [targetProjectId, user?._id, user?.email, rightPanelTab, addToast, setFiles, setOpenFiles, setTerminalHistory])
+  }, [targetProjectId, user?._id, user?.email, addToast, setFiles, setOpenFiles, setTerminalHistory])
 
   return {
     socketConnected,
